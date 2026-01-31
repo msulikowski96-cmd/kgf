@@ -4,6 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet } from "react-native";
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
+import BookingStackNavigator from "@/navigation/BookingStackNavigator";
 import ServicesStackNavigator from "@/navigation/ServicesStackNavigator";
 import ContactStackNavigator from "@/navigation/ContactStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
@@ -12,6 +13,7 @@ import { Colors } from "@/constants/theme";
 
 export type MainTabParamList = {
   HomeTab: undefined;
+  BookingTab: undefined;
   ServicesTab: undefined;
   ContactTab: undefined;
   ProfileTab: undefined;
@@ -55,6 +57,16 @@ export default function MainTabNavigator() {
           title: "Główna",
           tabBarIcon: ({ color, size }) => (
             <Feather name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="BookingTab"
+        component={BookingStackNavigator}
+        options={{
+          title: "Rezerwuj",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="calendar" size={size} color={color} />
           ),
         }}
       />
