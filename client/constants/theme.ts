@@ -1,30 +1,43 @@
 import { Platform } from "react-native";
 
-const tintColorLight = "#007AFF";
-const tintColorDark = "#0A84FF";
+// KGF Taxi brand colors
+const taxiYellow = "#FFC107";
+const taxiYellowDark = "#FFA000";
 
 export const Colors = {
   light: {
     text: "#11181C",
-    buttonText: "#FFFFFF",
+    textSecondary: "#687076",
+    buttonText: "#121212",
     tabIconDefault: "#687076",
-    tabIconSelected: tintColorLight,
-    link: "#007AFF",
-    backgroundRoot: "#FFFFFF", // Elevation 0
-    backgroundDefault: "#F2F2F2", // Elevation 1
-    backgroundSecondary: "#E6E6E6", // Elevation 2
-    backgroundTertiary: "#D9D9D9", // Elevation 3
+    tabIconSelected: taxiYellow,
+    link: taxiYellow,
+    primary: taxiYellow,
+    primaryDark: taxiYellowDark,
+    backgroundRoot: "#FFFFFF",
+    backgroundDefault: "#F5F5F5",
+    backgroundSecondary: "#EEEEEE",
+    backgroundTertiary: "#E0E0E0",
+    border: "#E0E0E0",
+    success: "#4CAF50",
+    error: "#F44336",
   },
   dark: {
-    text: "#ECEDEE",
-    buttonText: "#FFFFFF",
+    text: "#FFFFFF",
+    textSecondary: "#B0B0B0",
+    buttonText: "#121212",
     tabIconDefault: "#9BA1A6",
-    tabIconSelected: tintColorDark,
-    link: "#0A84FF",
-    backgroundRoot: "#1F2123", // Elevation 0
-    backgroundDefault: "#2A2C2E", // Elevation 1
-    backgroundSecondary: "#353739", // Elevation 2
-    backgroundTertiary: "#404244", // Elevation 3
+    tabIconSelected: taxiYellow,
+    link: taxiYellow,
+    primary: taxiYellow,
+    primaryDark: taxiYellowDark,
+    backgroundRoot: "#121212",
+    backgroundDefault: "#1E1E1E",
+    backgroundSecondary: "#2C2C2C",
+    backgroundTertiary: "#3A3A3A",
+    border: "#3A3A3A",
+    success: "#4CAF50",
+    error: "#F44336",
   },
 };
 
@@ -93,13 +106,9 @@ export const Typography = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: "system-ui",
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: "ui-serif",
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: "ui-rounded",
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: "ui-monospace",
   },
   default: {

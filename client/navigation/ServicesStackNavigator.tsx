@@ -1,25 +1,24 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
-import ProfileScreen from "@/screens/ProfileScreen";
+import ServicesScreen from "@/screens/ServicesScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
-export type ProfileStackParamList = {
-  Profile: undefined;
+export type ServicesStackParamList = {
+  Services: undefined;
 };
 
-const Stack = createNativeStackNavigator<ProfileStackParamList>();
+const Stack = createNativeStackNavigator<ServicesStackParamList>();
 
-export default function ProfileStackNavigator() {
+export default function ServicesStackNavigator() {
   const screenOptions = useScreenOptions();
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Services"
+        component={ServicesScreen}
         options={{
-          title: "O nas",
+          title: "Usługi",
         }}
       />
     </Stack.Navigator>
