@@ -1,84 +1,54 @@
-# This workflow will build a Node.js project and deploy it to an Azure Functions App on Windows or Linux when a commit is pushed to your default branch.
-#
-# This workflow assumes you have already created the target Azure Functions app.
-# For instructions see:
-#   - https://learn.microsoft.com/en-us/azure/azure-functions/create-first-function-vs-code-node
-#   - https://learn.microsoft.com/en-us/azure/azure-functions/create-first-function-vs-code-typescript
-#
-# To configure this workflow:
-# 1. Set up the following secrets in your repository:
-#   - AZURE_FUNCTIONAPP_PUBLISH_PROFILE
-# 2. Change env variables for your configuration.
-#
-# For more information on:
-#   - GitHub Actions for Azure: https://github.com/Azure/Actions
-#   - Azure Functions Action: https://github.com/Azure/functions-action
-#   - Publish Profile: https://github.com/Azure/functions-action#using-publish-profile-as-deployment-credential-recommended
-#   - Azure Service Principal for RBAC: https://github.com/Azure/functions-action#using-azure-service-principal-for-rbac-as-deployment-credential
-#
-# For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples/tree/master/FunctionApp
+# .github/workflows/workflow.yml
 
+# Ten workflow wdraża aplikację Azure Functions po każdym wypchnięciu do gałęzi 'main'.
+# Do autoryzacji używa Publish Profile, który należy skonfigurować jako Secret w repozytorium.
 
+name: Deploy Azure Function via Publish Profile
 
+# Trigger: Wykonaj, gdy nastąpi 'push' do gałęzi 'main'
+on:
+  push:
+    branches: [ "main" ]
 
-      # File: .github/workflows/workflow.yml
-
-on: [push]
-
-name: Run Azure Login without subscription
+env:
+  # Ustaw tutaj nazwę swojej aplikacji funkcji
+  AZURE_FUNCTIONAPP_NAME: YOUR_FUNCTION_APP_NAME_HERE # np. my-function-app
+  # Ścieżka do katalogu projektu (relatywna do głównego katalogu repozytorium)
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'                 # np. '.', './src', './dist'
+  # Wersja Node.js używana do budowania projektu
+  NODE_VERSION: '20.x'                                # Upewnij się, że wersja jest obsługiwana przez Azure Functions
 
 jobs:
-
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      # 1. Sprawdź kod z repozytorium
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
 
-    - name: Azure Login
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        allow-no-subscriptions: true
-        enable-AzPSSession: true
+      # 2. Ustaw środowisko Node.js
+      - name: 'Setup Node ${{ env.NODE_VERSION }} Environment'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
-    - name: Azure CLI script
-      uses: azure/cli@v2
-      with:
-        azcliversion: latest
-        inlineScript: |
-          az account show
+      # 3. Zainstaluj zależności i zbuduj projekt
+      - name: 'Resolve Project Dependencies Using Npm'
+        shell: bash # Dla Linuxa używamy bash
+        run: |
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          npm install
+          npm run build --if-present
+          npm run test --if-present
+          popd
 
-    - name: Run Azure PowerShell
-      uses: azure/powershell@v2
-      with:
-        azPSVersion: "latest"
-        inlineScript: |
-          Get-AzContext
-
-    # If you want to use Azure RBAC instead of Publish Profile, then uncomment the task below
-    # - name: 'Login via Azure CLI'
-    #   uses: azure/login@v1
-    #   with:
-    #     creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }} # set up AZURE_RBAC_CREDENTIALS secrets in your repository
-
-    - name: Setup Node ${{ env.NODE_VERSION }} Environment
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-
-    - name: 'Resolve Project Dependencies Using Npm'
-      shell: pwsh # For Linux, use bash
-      run: |
-        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-        npm install
-        npm run build --if-present
-        npm run test --if-present
-        popd
-
-    - name: 'Run Azure Functions Action'
-      uses: Azure/functions-action@v1
-      id: fa
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }} # Remove publish-profile to use Azure RBAC
+      # 4. Wdróż do Azure Functions przy użyciu Publish Profile
+      #    Upewnij się, że utworzyłeś Secret o nazwie AZURE_FUNCTIONAPP_PUBLISH_PROFILE
+      #    zawierający *treść* pliku .PublishSettings pobranego z Azure Portal.
+      - name: 'Run Azure Functions Action'
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: ${{ env.hhhNAME }}
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }} # Secret zawierający dane Publish Profile
