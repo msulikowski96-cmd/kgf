@@ -64,7 +64,7 @@ export default function RegisterScreen({ navigation }: any) {
         >
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.textPrimary }]}>Stwórz konto</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>Stwórz konto</Text>
                     <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                         Dołącz do nas i zarządzaj swoimi rezerwacjami
                     </Text>
@@ -79,10 +79,10 @@ export default function RegisterScreen({ navigation }: any) {
                             <TextInput
                                 style={[
                                     styles.input,
-                                    { color: theme.textPrimary, borderColor: theme.border, backgroundColor: theme.backgroundCard },
+                                    { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
                                 ]}
                                 placeholder="Imię"
-                                placeholderTextColor={theme.textTertiary}
+                                placeholderTextColor={theme.textSecondary}
                                 value={firstName}
                                 onChangeText={setFirstName}
                             />
@@ -92,10 +92,10 @@ export default function RegisterScreen({ navigation }: any) {
                             <TextInput
                                 style={[
                                     styles.input,
-                                    { color: theme.textPrimary, borderColor: theme.border, backgroundColor: theme.backgroundCard },
+                                    { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
                                 ]}
                                 placeholder="Nazwisko"
-                                placeholderTextColor={theme.textTertiary}
+                                placeholderTextColor={theme.textSecondary}
                                 value={lastName}
                                 onChangeText={setLastName}
                             />
@@ -107,10 +107,10 @@ export default function RegisterScreen({ navigation }: any) {
                         <TextInput
                             style={[
                                 styles.input,
-                                { color: theme.textPrimary, borderColor: theme.border, backgroundColor: theme.backgroundCard },
+                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
                             ]}
                             placeholder="Twój email"
-                            placeholderTextColor={theme.textTertiary}
+                            placeholderTextColor={theme.textSecondary}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -123,10 +123,10 @@ export default function RegisterScreen({ navigation }: any) {
                         <TextInput
                             style={[
                                 styles.input,
-                                { color: theme.textPrimary, borderColor: theme.border, backgroundColor: theme.backgroundCard },
+                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
                             ]}
                             placeholder="Co najmniej 6 znaków"
-                            placeholderTextColor={theme.textTertiary}
+                            placeholderTextColor={theme.textSecondary}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry
@@ -138,10 +138,10 @@ export default function RegisterScreen({ navigation }: any) {
                         <TextInput
                             style={[
                                 styles.input,
-                                { color: theme.textPrimary, borderColor: theme.border, backgroundColor: theme.backgroundCard },
+                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
                             ]}
                             placeholder="Powtórz hasło"
-                            placeholderTextColor={theme.textTertiary}
+                            placeholderTextColor={theme.textSecondary}
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
                             secureTextEntry

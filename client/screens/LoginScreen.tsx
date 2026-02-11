@@ -46,7 +46,7 @@ export default function LoginScreen({ navigation }: any) {
         >
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.textPrimary }]}>Witaj ponownie</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>Witaj ponownie</Text>
                     <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                         Zaloguj się do swojego konta
                     </Text>
@@ -60,10 +60,10 @@ export default function LoginScreen({ navigation }: any) {
                         <TextInput
                             style={[
                                 styles.input,
-                                { color: theme.textPrimary, borderColor: theme.border, backgroundColor: theme.backgroundCard },
+                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
                             ]}
                             placeholder="Twój email"
-                            placeholderTextColor={theme.textTertiary}
+                            placeholderTextColor={theme.textSecondary}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -76,10 +76,10 @@ export default function LoginScreen({ navigation }: any) {
                         <TextInput
                             style={[
                                 styles.input,
-                                { color: theme.textPrimary, borderColor: theme.border, backgroundColor: theme.backgroundCard },
+                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
                             ]}
                             placeholder="Twoje hasło"
-                            placeholderTextColor={theme.textTertiary}
+                            placeholderTextColor={theme.textSecondary}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry

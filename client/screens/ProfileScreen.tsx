@@ -210,7 +210,7 @@ export default function ProfileScreen() {
                 <View style={styles.inputGroup}>
                   <ThemedText type="small" style={styles.inputLabel}>Imię</ThemedText>
                   <TextInput
-                    style={[styles.input, { color: theme.textPrimary, borderColor: theme.border }]}
+                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                     value={firstName}
                     onChangeText={setFirstName}
                     placeholder="Wpisz imię"
@@ -219,7 +219,7 @@ export default function ProfileScreen() {
                 <View style={styles.inputGroup}>
                   <ThemedText type="small" style={styles.inputLabel}>Nazwisko</ThemedText>
                   <TextInput
-                    style={[styles.input, { color: theme.textPrimary, borderColor: theme.border }]}
+                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                     value={lastName}
                     onChangeText={setLastName}
                     placeholder="Wpisz nazwisko"
@@ -230,7 +230,7 @@ export default function ProfileScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText type="small" style={styles.inputLabel}>Telefon</ThemedText>
                 <TextInput
-                  style={[styles.input, { color: theme.textPrimary, borderColor: theme.border }]}
+                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
@@ -241,7 +241,7 @@ export default function ProfileScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText type="small" style={styles.inputLabel}>Adres</ThemedText>
                 <TextInput
-                  style={[styles.input, { color: theme.textPrimary, borderColor: theme.border }]}
+                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                   value={address}
                   onChangeText={setAddress}
                   placeholder="Ulica i nr domu"
@@ -251,7 +251,7 @@ export default function ProfileScreen() {
               <View style={styles.inputGroup}>
                 <ThemedText type="small" style={styles.inputLabel}>Miasto</ThemedText>
                 <TextInput
-                  style={[styles.input, { color: theme.textPrimary, borderColor: theme.border }]}
+                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
                   value={city}
                   onChangeText={setCity}
                   placeholder="Miasto"
