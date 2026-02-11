@@ -43,13 +43,13 @@ async function fetchWithAuth(
     options: RequestInit = {},
 ): Promise<Response> {
     const token = await getToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        ...options.headers,
+        ...options.headers as Record<string, string>,
     };
 
     if (token) {
-        headers.Authorization = `Bearer ${token}`;
+        headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {

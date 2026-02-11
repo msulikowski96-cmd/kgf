@@ -1,43 +1,45 @@
 import { Platform } from "react-native";
 
-// KGF Taxi brand colors
-const taxiYellow = "#FFC107";
-const taxiYellowDark = "#FFA000";
+// Uber-inspired brand colors
+const uberBlack = "#000000";
+const uberWhite = "#FFFFFF";
+const uberBlue = "#276EF1";
+const uberGray = "#F6F6F6";
 
 export const Colors = {
   light: {
-    text: "#11181C",
-    textSecondary: "#687076",
-    buttonText: "#121212",
-    tabIconDefault: "#687076",
-    tabIconSelected: taxiYellow,
-    link: taxiYellow,
-    primary: taxiYellow,
-    primaryDark: taxiYellowDark,
-    backgroundRoot: "#FFFFFF",
-    backgroundDefault: "#F5F5F5",
-    backgroundSecondary: "#EEEEEE",
-    backgroundTertiary: "#E0E0E0",
-    border: "#E0E0E0",
-    success: "#4CAF50",
-    error: "#F44336",
+    text: "#000000",
+    textSecondary: "#5E5E5E",
+    buttonText: "#FFFFFF",
+    tabIconDefault: "#5E5E5E",
+    tabIconSelected: "#000000",
+    link: uberBlue,
+    primary: uberBlack,
+    primaryDark: "#1F1F1F",
+    backgroundRoot: uberWhite,
+    backgroundDefault: uberWhite,
+    backgroundSecondary: uberGray,
+    backgroundTertiary: "#EEEEEE",
+    border: "#EEEEEE",
+    success: "#05A357",
+    error: "#E11900",
   },
   dark: {
     text: "#FFFFFF",
-    textSecondary: "#B0B0B0",
-    buttonText: "#121212",
-    tabIconDefault: "#9BA1A6",
-    tabIconSelected: taxiYellow,
-    link: taxiYellow,
-    primary: taxiYellow,
-    primaryDark: taxiYellowDark,
-    backgroundRoot: "#121212",
-    backgroundDefault: "#1E1E1E",
-    backgroundSecondary: "#2C2C2C",
-    backgroundTertiary: "#3A3A3A",
-    border: "#3A3A3A",
-    success: "#4CAF50",
-    error: "#F44336",
+    textSecondary: "#AFAFAF",
+    buttonText: "#000000",
+    tabIconDefault: "#AFAFAF",
+    tabIconSelected: "#FFFFFF",
+    link: uberBlue,
+    primary: uberWhite,
+    primaryDark: "#F1F1F1",
+    backgroundRoot: uberBlack,
+    backgroundDefault: "#121212",
+    backgroundSecondary: "#1F1F1F",
+    backgroundTertiary: "#292929",
+    border: "#292929",
+    success: "#05A357",
+    error: "#FF3B30",
   },
 };
 
@@ -46,23 +48,23 @@ export const Spacing = {
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 20,
-  "2xl": 24,
-  "3xl": 32,
-  "4xl": 40,
-  "5xl": 48,
-  inputHeight: 48,
-  buttonHeight: 52,
+  xl: 24,
+  "2xl": 32,
+  "3xl": 40,
+  "4xl": 48,
+  "5xl": 64,
+  inputHeight: 56,
+  buttonHeight: 56,
 };
 
 export const BorderRadius = {
-  xs: 8,
-  sm: 12,
-  md: 18,
-  lg: 24,
-  xl: 30,
-  "2xl": 40,
-  "3xl": 50,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  "2xl": 32,
+  "3xl": 40,
   full: 9999,
 };
 

@@ -66,7 +66,7 @@ export default function RegisterScreen({ navigation }: any) {
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: theme.text }]}>Stwórz konto</Text>
                     <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                        Dołącz do nas i zarządzaj swoimi rezerwacjami
+                        Dołącz do KGF Taxi i zacznij podróżować
                     </Text>
                 </View>
 
@@ -74,12 +74,11 @@ export default function RegisterScreen({ navigation }: any) {
                     {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
                     <View style={styles.row}>
-                        <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
-                            <Text style={[styles.label, { color: theme.textSecondary }]}>Imię</Text>
+                        <View style={{ flex: 1, marginRight: 8 }}>
                             <TextInput
                                 style={[
-                                    styles.input,
-                                    { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
+                                    styles.minimalInput,
+                                    { color: theme.text, backgroundColor: theme.backgroundSecondary },
                                 ]}
                                 placeholder="Imię"
                                 placeholderTextColor={theme.textSecondary}
@@ -87,12 +86,11 @@ export default function RegisterScreen({ navigation }: any) {
                                 onChangeText={setFirstName}
                             />
                         </View>
-                        <View style={[styles.inputContainer, { flex: 1, marginLeft: 8 }]}>
-                            <Text style={[styles.label, { color: theme.textSecondary }]}>Nazwisko</Text>
+                        <View style={{ flex: 1, marginLeft: 8 }}>
                             <TextInput
                                 style={[
-                                    styles.input,
-                                    { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
+                                    styles.minimalInput,
+                                    { color: theme.text, backgroundColor: theme.backgroundSecondary },
                                 ]}
                                 placeholder="Nazwisko"
                                 placeholderTextColor={theme.textSecondary}
@@ -102,14 +100,13 @@ export default function RegisterScreen({ navigation }: any) {
                         </View>
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Email *</Text>
+                    <View style={styles.inputGroup}>
                         <TextInput
                             style={[
-                                styles.input,
-                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
+                                styles.minimalInput,
+                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
                             ]}
-                            placeholder="Twój email"
+                            placeholder="Email"
                             placeholderTextColor={theme.textSecondary}
                             value={email}
                             onChangeText={setEmail}
@@ -118,14 +115,13 @@ export default function RegisterScreen({ navigation }: any) {
                         />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Hasło *</Text>
+                    <View style={styles.inputGroup}>
                         <TextInput
                             style={[
-                                styles.input,
-                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
+                                styles.minimalInput,
+                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
                             ]}
-                            placeholder="Co najmniej 6 znaków"
+                            placeholder="Hasło"
                             placeholderTextColor={theme.textSecondary}
                             value={password}
                             onChangeText={setPassword}
@@ -133,14 +129,13 @@ export default function RegisterScreen({ navigation }: any) {
                         />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Potwierdź hasło *</Text>
+                    <View style={styles.inputGroup}>
                         <TextInput
                             style={[
-                                styles.input,
-                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
+                                styles.minimalInput,
+                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
                             ]}
-                            placeholder="Powtórz hasło"
+                            placeholder="Potwierdź hasło"
                             placeholderTextColor={theme.textSecondary}
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
@@ -149,7 +144,7 @@ export default function RegisterScreen({ navigation }: any) {
                     </View>
 
                     <TouchableOpacity
-                        style={[styles.registerButton, { backgroundColor: Colors.dark.primary }]}
+                        style={[styles.registerButton, { backgroundColor: "#000" }]}
                         onPress={handleRegister}
                         disabled={loading}
                     >
@@ -165,7 +160,7 @@ export default function RegisterScreen({ navigation }: any) {
                             Masz już konto?{" "}
                         </Text>
                         <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-                            <Text style={[styles.footerLink, { color: Colors.dark.primary }]}>Zaloguj się</Text>
+                            <Text style={[styles.footerLink, { color: "#276EF1" }]}>Zaloguj się</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -181,64 +176,52 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         padding: 24,
-        paddingTop: 60,
+        paddingTop: 80,
     },
     header: {
         marginBottom: 32,
     },
     title: {
-        fontSize: 28,
-        fontFamily: "Nunito_700Bold",
-        marginBottom: 8,
+        fontSize: 32,
+        fontWeight: "700",
+        marginBottom: 12,
     },
     subtitle: {
-        fontSize: 16,
-        fontFamily: "Nunito_400Regular",
+        fontSize: 18,
+        lineHeight: 24,
     },
     form: {
         width: "100%",
     },
     row: {
         flexDirection: "row",
-        marginBottom: 16,
+        marginBottom: 12,
     },
-    inputContainer: {
-        marginBottom: 16,
+    inputGroup: {
+        marginBottom: 12,
     },
-    label: {
-        fontSize: 14,
-        fontFamily: "Nunito_600SemiBold",
-        marginBottom: 8,
-    },
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderRadius: 12,
+    minimalInput: {
+        height: 56,
+        borderRadius: 8,
         paddingHorizontal: 16,
         fontSize: 16,
-        fontFamily: "Nunito_400Regular",
+        fontWeight: "500",
     },
     registerButton: {
-        height: 54,
-        borderRadius: 12,
+        height: 56,
+        borderRadius: 8,
         justifyContent: "center",
         alignItems: "center",
-        marginTop: 24,
-        shadowColor: Colors.dark.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        marginTop: 20,
     },
     registerButtonText: {
         color: "#fff",
-        fontSize: 16,
-        fontFamily: "Nunito_700Bold",
+        fontSize: 18,
+        fontWeight: "700",
     },
     errorText: {
-        color: "#ff4444",
+        color: "#E11900",
         fontSize: 14,
-        fontFamily: "Nunito_400Regular",
         marginBottom: 16,
         textAlign: "center",
     },
@@ -249,11 +232,10 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     footerText: {
-        fontSize: 14,
-        fontFamily: "Nunito_400Regular",
+        fontSize: 15,
     },
     footerLink: {
-        fontSize: 14,
-        fontFamily: "Nunito_700Bold",
+        fontSize: 15,
+        fontWeight: "700",
     },
 });

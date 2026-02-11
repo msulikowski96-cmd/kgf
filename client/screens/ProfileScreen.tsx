@@ -174,7 +174,7 @@ export default function ProfileScreen() {
         entering={FadeInDown.delay(100).duration(500).springify()}
         style={styles.profileHeader}
       >
-        <View style={styles.imageContainer}>
+        <View style={[styles.imageContainer, { backgroundColor: theme.backgroundSecondary }]}>
           <Image
             source={require("../../assets/images/icon.png")}
             style={styles.profileImage}
@@ -191,9 +191,9 @@ export default function ProfileScreen() {
           {user?.email}
         </ThemedText>
 
-        <View style={[styles.pointsBadge, { backgroundColor: Colors.dark.primary }]}>
-          <Feather name="star" size={14} color="#000" />
-          <ThemedText style={styles.pointsText}>
+        <View style={[styles.pointsBadge, { backgroundColor: "#000" }]}>
+          <Feather name="star" size={14} color="#fff" />
+          <ThemedText style={styles.pointsText} lightColor="#fff" darkColor="#fff">
             {user?.loyaltyPoints || "0"} pkt
           </ThemedText>
         </View>
@@ -209,8 +209,8 @@ export default function ProfileScreen() {
             MOJE DANE
           </ThemedText>
           <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
-            <ThemedText type="small" style={{ color: Colors.dark.primary, fontWeight: "600" }}>
-              {isEditing ? "Anuluj" : "Edytuj"}
+            <ThemedText type="small" style={{ color: "#276EF1", fontWeight: "700" }}>
+              {isEditing ? "Anuluj" : "Edytuj dane"}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -278,7 +278,7 @@ export default function ProfileScreen() {
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <ThemedText style={styles.saveButtonText}>Zapisz zmiany</ThemedText>
+                  <ThemedText style={styles.saveButtonText} lightColor="#fff" darkColor="#fff">Zapisz zmiany</ThemedText>
                 )}
               </TouchableOpacity>
             </View>
@@ -325,12 +325,11 @@ export default function ProfileScreen() {
               onValueChange={(val) => {
                 setPushNotifications(val);
                 if (!isEditing) {
-                  // Auto-save if not in editing mode 
                   api.updateProfile({ pushNotifications: val ? "true" : "false" }).then(updateUser);
                 }
               }}
-              trackColor={{ false: "#767577", true: Colors.dark.primary }}
-              thumbColor={pushNotifications ? "#fff" : "#f4f3f4"}
+              trackColor={{ false: "#E0E0E0", true: "#000" }}
+              thumbColor="#fff"
             />
           </View>
 
@@ -351,8 +350,8 @@ export default function ProfileScreen() {
                   api.updateProfile({ marketingConsent: val ? "true" : "false" }).then(updateUser);
                 }
               }}
-              trackColor={{ false: "#767577", true: Colors.dark.primary }}
-              thumbColor={marketingConsent ? "#fff" : "#f4f3f4"}
+              trackColor={{ false: "#E0E0E0", true: "#000" }}
+              thumbColor="#fff"
             />
           </View>
         </View>
@@ -434,7 +433,6 @@ const styles = StyleSheet.create({
   imageContainer: {
     padding: 8,
     borderRadius: BorderRadius.xl,
-    backgroundColor: "rgba(255, 193, 7, 0.1)",
     marginBottom: Spacing.lg,
   },
   profileImage: {
@@ -503,15 +501,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   saveButtonText: {
-    color: "#000",
     fontWeight: "700",
   },
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
-    marginBottom: Spacing.sm,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1,
   },
   menuIconContainer: {
     width: 40,

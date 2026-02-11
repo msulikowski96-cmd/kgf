@@ -17,52 +17,19 @@ import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
 } from "react-native-reanimated";
 
-import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
-
-const PHONE_NUMBER = "537353052";
-const CALENDLY_URL = "https://calendly.com";
+import { Spacing, BorderRadius } from "@/constants/theme";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-interface InputFieldProps {
-  icon: keyof typeof Feather.glyphMap;
-  placeholder: string;
-  value: string;
-  onChangeText: (text: string) => void;
-  delay: number;
-}
-
-function InputField({
-  icon,
-  placeholder,
-  value,
-  onChangeText,
-  delay,
-}: InputFieldProps) {
-  const { theme } = useTheme();
-
-  return (
-    <Animated.View
-      entering={FadeInDown.delay(delay).duration(500).springify()}
-      style={[styles.inputContainer, { backgroundColor: theme.backgroundDefault }]}
-    >
-      <Feather name={icon} size={20} color={Colors.dark.primary} style={styles.inputIcon} />
-      <TextInput
-        style={[styles.input, { color: theme.text }]}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textSecondary}
-        value={value}
-        onChangeText={onChangeText}
-      />
-    </Animated.View>
-  );
-}
+const VEHICLE_TYPES = [
+  { id: "standard", name: "KGF Standard", price: "25-30 zł", icon: "car", eta: "4 min" },
+  { id: "vip", name: "KGF VIP", price: "45-55 zł", icon: "shield", eta: "6 min" },
+  { id: "business", name: "Biznes", price: "35-40 zł", icon: "briefcase", eta: "5 min" },
+];
 
 export default function BookingScreen() {
   const insets = useSafeAreaInsets();
@@ -74,8 +41,7 @@ export default function BookingScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickupLocation, setPickupLocation] = useState("");
   const [destination, setDestination] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [selectedVehicle, setSelectedVehicle] = useState("standard");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -86,19 +52,11 @@ export default function BookingScreen() {
   }));
 
   const formatDate = (d: Date) => {
-    return d.toLocaleDateString("pl-PL", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    return d.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
   };
 
   const formatTime = (d: Date) => {
-    return d.toLocaleTimeString("pl-PL", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -123,39 +81,24 @@ export default function BookingScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!pickupLocation || !destination || !name || !phone) {
+    if (!pickupLocation || !destination) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Uzupełnij dane", "Proszę wypełnić wszystkie pola formularza.");
+      Alert.alert("Uzupełnij dane", "Proszę podać miejsce odbioru i cel.");
       return;
     }
 
     setIsSubmitting(true);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
-    // Simulate sending the booking
     setTimeout(() => {
       setIsSubmitting(false);
       setIsSubmitted(true);
-    }, 1000);
-  };
-
-  const handleCallToBook = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const message = `Rezerwacja KGF Taxi:\nData: ${formatDate(date)}\nGodzina: ${formatTime(date)}\nOdbiór: ${pickupLocation}\nCel: ${destination}\nImię: ${name}`;
-    Linking.openURL(`sms:${PHONE_NUMBER}?body=${encodeURIComponent(message)}`);
-  };
-
-  const handleOpenCalendly = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL(CALENDLY_URL);
+    }, 1500);
   };
 
   const handleNewBooking = () => {
     setIsSubmitted(false);
     setPickupLocation("");
     setDestination("");
-    setName("");
-    setPhone("");
     setDate(new Date());
   };
 
@@ -165,241 +108,142 @@ export default function BookingScreen() {
         <View style={[styles.successContainer, { paddingTop: headerHeight + Spacing["3xl"] }]}>
           <Animated.View
             entering={FadeInDown.delay(100).duration(600).springify()}
-            style={[styles.successIcon, { backgroundColor: Colors.dark.primary }]}
+            style={[styles.successIcon, { backgroundColor: "#000" }]}
           >
-            <Feather name="check" size={48} color="#121212" />
-          </Animated.View>
-          
-          <Animated.View entering={FadeInDown.delay(200).duration(500).springify()}>
-            <ThemedText type="h2" style={styles.successTitle}>
-              Rezerwacja przyjęta!
-            </ThemedText>
-          </Animated.View>
-          
-          <Animated.View entering={FadeInDown.delay(300).duration(500).springify()}>
-            <ThemedText
-              type="body"
-              style={[styles.successText, { color: theme.textSecondary }]}
-            >
-              Skontaktujemy się z Tobą wkrótce, aby potwierdzić przejazd.
-            </ThemedText>
+            <Feather name="check" size={48} color="#fff" />
           </Animated.View>
 
-          <Animated.View
-            entering={FadeInDown.delay(400).duration(500).springify()}
-            style={[styles.summaryCard, { backgroundColor: theme.backgroundDefault }]}
+          <ThemedText type="h2" style={styles.successTitle}>Przyjęto zamówienie</ThemedText>
+          <ThemedText type="body" style={[styles.successText, { color: theme.textSecondary }]}>
+            Kierowca zaakceptuje Twoje zamówienie w ciągu kilku sekund.
+          </ThemedText>
+
+          <View style={[styles.summaryCard, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={styles.summaryRow}>
+              <Feather name="map-pin" size={18} color="#000" />
+              <ThemedText type="body" style={styles.summaryText}>{pickupLocation}</ThemedText>
+            </View>
+            <View style={styles.summaryRow}>
+              <Feather name="navigation" size={18} color="#000" />
+              <ThemedText type="body" style={styles.summaryText}>{destination}</ThemedText>
+            </View>
+          </View>
+
+          <Pressable
+            style={[styles.submitButton, { backgroundColor: "#000", width: "100%", marginTop: Spacing.xl }]}
+            onPress={handleNewBooking}
           >
-            <View style={styles.summaryRow}>
-              <Feather name="calendar" size={18} color={Colors.dark.primary} />
-              <ThemedText type="body" style={styles.summaryText}>
-                {formatDate(date)}
-              </ThemedText>
-            </View>
-            <View style={styles.summaryRow}>
-              <Feather name="clock" size={18} color={Colors.dark.primary} />
-              <ThemedText type="body" style={styles.summaryText}>
-                {formatTime(date)}
-              </ThemedText>
-            </View>
-            <View style={styles.summaryRow}>
-              <Feather name="map-pin" size={18} color={Colors.dark.primary} />
-              <ThemedText type="body" style={styles.summaryText}>
-                {pickupLocation}
-              </ThemedText>
-            </View>
-            <View style={styles.summaryRow}>
-              <Feather name="navigation" size={18} color={Colors.dark.primary} />
-              <ThemedText type="body" style={styles.summaryText}>
-                {destination}
-              </ThemedText>
-            </View>
-          </Animated.View>
-
-          <Animated.View entering={FadeInDown.delay(500).duration(500).springify()}>
-            <Pressable
-              style={[styles.callButton, { backgroundColor: Colors.dark.primary }]}
-              onPress={handleCallToBook}
-            >
-              <Feather name="phone" size={20} color="#121212" />
-              <ThemedText style={styles.callButtonText} lightColor="#121212" darkColor="#121212">
-                Zadzwoń, aby przyspieszyć
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-
-          <Animated.View entering={FadeInDown.delay(600).duration(500).springify()}>
-            <Pressable
-              style={[styles.newBookingButton, { borderColor: theme.border }]}
-              onPress={handleNewBooking}
-            >
-              <ThemedText type="body" style={{ color: Colors.dark.primary }}>
-                Nowa rezerwacja
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
+            <ThemedText style={{ color: "#fff", fontWeight: "700" }}>Gotowe</ThemedText>
+          </Pressable>
         </View>
       </View>
     );
   }
 
   return (
-    <KeyboardAwareScrollViewCompat
-      style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: insets.bottom + Spacing["3xl"],
-        paddingHorizontal: Spacing.lg,
-      }}
-    >
-      <Animated.View entering={FadeInDown.delay(100).duration(500).springify()}>
-        <ThemedText type="h2" style={styles.pageTitle}>
-          Zarezerwuj przejazd
-        </ThemedText>
-        <ThemedText
-          type="body"
-          style={[styles.pageSubtitle, { color: theme.textSecondary }]}
-        >
-          Wypełnij formularz, a my skontaktujemy się z Tobą
-        </ThemedText>
-      </Animated.View>
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <View style={[styles.headerSection, { paddingTop: headerHeight + Spacing.lg }]}>
+        <View style={styles.locationContainer}>
+          <View style={styles.locationVisual}>
+            <View style={[styles.pickupDot, { borderColor: "#000" }]} />
+            <View style={[styles.locationLine, { backgroundColor: "#000" }]} />
+            <View style={[styles.destinationSquare, { backgroundColor: "#000" }]} />
+          </View>
 
-      {/* Date Picker */}
-      <Animated.View entering={FadeInDown.delay(200).duration(500).springify()}>
-        <Pressable
-          style={[styles.inputContainer, { backgroundColor: theme.backgroundDefault }]}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Feather name="calendar" size={20} color={Colors.dark.primary} style={styles.inputIcon} />
-          <ThemedText type="body" style={styles.pickerText}>
-            {formatDate(date)}
-          </ThemedText>
-          <Feather name="chevron-down" size={20} color={theme.textSecondary} />
-        </Pressable>
-      </Animated.View>
+          <View style={styles.inputsColumn}>
+            <TextInput
+              style={[styles.minimalInput, { color: theme.text, backgroundColor: theme.backgroundSecondary }]}
+              placeholder="Miejsce odbioru"
+              value={pickupLocation}
+              onChangeText={setPickupLocation}
+              placeholderTextColor={theme.textSecondary}
+            />
+            <View style={{ height: 10 }} />
+            <TextInput
+              style={[styles.minimalInput, { color: theme.text, backgroundColor: theme.backgroundSecondary }]}
+              placeholder="Dokąd jedziemy?"
+              value={destination}
+              onChangeText={setDestination}
+              placeholderTextColor={theme.textSecondary}
+            />
+          </View>
+        </View>
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={date}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleDateChange}
-          minimumDate={new Date()}
-        />
-      )}
+        <View style={styles.timeSettings}>
+          <Pressable style={[styles.settingBadge, { backgroundColor: theme.backgroundSecondary }]} onPress={() => setShowDatePicker(true)}>
+            <Feather name="calendar" size={14} color="#000" />
+            <ThemedText type="small" style={styles.badgeText}>{formatDate(date)}</ThemedText>
+          </Pressable>
+          <Pressable style={[styles.settingBadge, { backgroundColor: theme.backgroundSecondary }]} onPress={() => setShowTimePicker(true)}>
+            <Feather name="clock" size={14} color="#000" />
+            <ThemedText type="small" style={styles.badgeText}>{formatTime(date)}</ThemedText>
+          </Pressable>
+        </View>
+      </View>
 
-      {/* Time Picker */}
-      <Animated.View entering={FadeInDown.delay(300).duration(500).springify()}>
-        <Pressable
-          style={[styles.inputContainer, { backgroundColor: theme.backgroundDefault }]}
-          onPress={() => setShowTimePicker(true)}
-        >
-          <Feather name="clock" size={20} color={Colors.dark.primary} style={styles.inputIcon} />
-          <ThemedText type="body" style={styles.pickerText}>
-            {formatTime(date)}
-          </ThemedText>
-          <Feather name="chevron-down" size={20} color={theme.textSecondary} />
-        </Pressable>
-      </Animated.View>
+      <View style={[styles.bottomSheet, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={styles.dragHandle} />
+        <ThemedText type="h4" style={styles.sheetTitle}>Wybierz typ przejazdu</ThemedText>
 
-      {showTimePicker && (
-        <DateTimePicker
-          value={date}
-          mode="time"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleTimeChange}
-          is24Hour={true}
-        />
-      )}
+        <View style={styles.vehicleList}>
+          {VEHICLE_TYPES.map((v) => (
+            <Pressable
+              key={v.id}
+              onPress={() => setSelectedVehicle(v.id)}
+              style={[
+                styles.vehicleCard,
+                selectedVehicle === v.id && { borderColor: "#000", borderWidth: 2 }
+              ]}
+            >
+              <View style={[styles.vIconContainer, { backgroundColor: theme.backgroundSecondary }]}>
+                <Feather name={v.icon as any} size={24} color="#000" />
+              </View>
+              <View style={styles.vInfo}>
+                <ThemedText type="body" style={{ fontWeight: "700" }}>{v.name}</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>{v.eta}</ThemedText>
+              </View>
+              <ThemedText type="body" style={{ fontWeight: "700" }}>{v.price}</ThemedText>
+            </Pressable>
+          ))}
+        </View>
 
-      <InputField
-        icon="map-pin"
-        placeholder="Miejsce odbioru"
-        value={pickupLocation}
-        onChangeText={setPickupLocation}
-        delay={400}
-      />
+        <View style={[styles.paymentRow, { borderTopColor: theme.border }]}>
+          <View style={styles.paymentMethod}>
+            <View style={[styles.pIcon, { backgroundColor: "#000" }]}>
+              <ThemedText lightColor="#fff" darkColor="#fff" style={{ fontSize: 10, fontWeight: "700" }}>VISA</ThemedText>
+            </View>
+            <ThemedText type="small" style={{ marginLeft: 8, fontWeight: "600" }}>•••• 4242</ThemedText>
+            <Feather name="chevron-right" size={16} color={theme.textSecondary} style={{ marginLeft: 4 }} />
+          </View>
+          <ThemedText type="small" style={{ color: "#276EF1", fontWeight: "700" }}>Promocja</ThemedText>
+        </View>
 
-      <InputField
-        icon="navigation"
-        placeholder="Miejsce docelowe"
-        value={destination}
-        onChangeText={setDestination}
-        delay={500}
-      />
-
-      <InputField
-        icon="user"
-        placeholder="Twoje imię"
-        value={name}
-        onChangeText={setName}
-        delay={600}
-      />
-
-      <InputField
-        icon="phone"
-        placeholder="Numer telefonu"
-        value={phone}
-        onChangeText={setPhone}
-        delay={700}
-      />
-
-      {/* Submit Button */}
-      <Animated.View entering={FadeInDown.delay(800).duration(500).springify()}>
         <AnimatedPressable
-          onPressIn={() => {
-            buttonScale.value = withSpring(0.97);
-          }}
-          onPressOut={() => {
-            buttonScale.value = withSpring(1);
-          }}
           onPress={handleSubmit}
           disabled={isSubmitting}
           style={[
             styles.submitButton,
-            { backgroundColor: Colors.dark.primary, opacity: isSubmitting ? 0.7 : 1 },
+            { backgroundColor: "#000", opacity: isSubmitting ? 0.7 : 1 },
             buttonAnimatedStyle,
           ]}
         >
-          <Feather name="send" size={20} color="#121212" />
-          <ThemedText style={styles.submitButtonText} lightColor="#121212" darkColor="#121212">
-            {isSubmitting ? "Wysyłanie..." : "Wyślij rezerwację"}
+          <ThemedText style={styles.submitButtonText} lightColor="#fff" darkColor="#fff">
+            {isSubmitting ? "Przetwarzanie..." : `Zamów ${VEHICLE_TYPES.find(v => v.id === selectedVehicle)?.name}`}
           </ThemedText>
         </AnimatedPressable>
-      </Animated.View>
+      </View>
 
-      {/* Alternative Options */}
-      <Animated.View
-        entering={FadeInDown.delay(900).duration(500).springify()}
-        style={styles.alternativeSection}
-      >
-        <ThemedText
-          type="small"
-          style={[styles.alternativeLabel, { color: theme.textSecondary }]}
-        >
-          lub skorzystaj z innych opcji
-        </ThemedText>
-
-        <Pressable
-          style={[styles.alternativeButton, { backgroundColor: theme.backgroundDefault }]}
-          onPress={handleCallToBook}
-        >
-          <Feather name="message-circle" size={20} color={Colors.dark.primary} />
-          <ThemedText type="body" style={styles.alternativeButtonText}>
-            Wyślij SMS z rezerwacją
-          </ThemedText>
-        </Pressable>
-
-        <Pressable
-          style={[styles.alternativeButton, { backgroundColor: theme.backgroundDefault }]}
-          onPress={handleOpenCalendly}
-        >
-          <Feather name="external-link" size={20} color={Colors.dark.primary} />
-          <ThemedText type="body" style={styles.alternativeButtonText}>
-            Otwórz kalendarz online
-          </ThemedText>
-        </Pressable>
-      </Animated.View>
-    </KeyboardAwareScrollViewCompat>
+      {(showDatePicker || showTimePicker) && (
+        <DateTimePicker
+          value={date}
+          mode={showDatePicker ? "date" : "time"}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={showDatePicker ? handleDateChange : handleTimeChange}
+          minimumDate={new Date()}
+          is24Hour={true}
+        />
+      )}
+    </View>
   );
 }
 
@@ -407,59 +251,133 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  pageTitle: {
-    marginBottom: Spacing.sm,
+  headerSection: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
   },
-  pageSubtitle: {
-    marginBottom: Spacing.xl,
-  },
-  inputContainer: {
+  locationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
   },
-  inputIcon: {
-    marginRight: Spacing.md,
+  locationVisual: {
+    alignItems: "center",
+    marginRight: 16,
+    width: 20,
   },
-  input: {
+  pickupDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 2,
+  },
+  locationLine: {
+    width: 2,
+    height: 40,
+    marginVertical: 4,
+  },
+  destinationSquare: {
+    width: 8,
+    height: 8,
+  },
+  inputsColumn: {
     flex: 1,
+  },
+  minimalInput: {
+    height: 48,
+    borderRadius: 8,
+    paddingHorizontal: 12,
     fontSize: 16,
+    fontWeight: "500",
   },
-  pickerText: {
-    flex: 1,
-  },
-  submitButton: {
+  timeSettings: {
     flexDirection: "row",
+    marginTop: 20,
+    gap: 12,
+  },
+  settingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+  },
+  badgeText: {
+    fontWeight: "600",
+  },
+  bottomSheet: {
+    flex: 1,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 20,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E0E0E0",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  vehicleList: {
+    gap: 8,
+  },
+  vehicleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  vIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing.md,
+    marginRight: 16,
+  },
+  vInfo: {
+    flex: 1,
+  },
+  paymentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 20,
+    marginTop: 10,
+    borderTopWidth: 1,
+  },
+  paymentMethod: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pIcon: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  submitButton: {
+    height: 56,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.xl,
   },
   submitButtonText: {
     fontSize: 18,
-    fontWeight: "600",
-    marginLeft: Spacing.sm,
-  },
-  alternativeSection: {
-    marginTop: Spacing["3xl"],
-  },
-  alternativeLabel: {
-    textAlign: "center",
-    marginBottom: Spacing.lg,
-  },
-  alternativeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  alternativeButtonText: {
-    marginLeft: Spacing.sm,
+    fontWeight: "700",
   },
   successContainer: {
     flex: 1,
@@ -467,53 +385,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   successIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.xl,
+    marginBottom: 24,
   },
   successTitle: {
+    marginBottom: 12,
     textAlign: "center",
-    marginBottom: Spacing.md,
   },
   successText: {
     textAlign: "center",
-    marginBottom: Spacing.xl,
+    marginBottom: 32,
   },
   summaryCard: {
     width: "100%",
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    marginBottom: Spacing.xl,
+    padding: 20,
+    borderRadius: 12,
   },
   summaryRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   summaryText: {
-    marginLeft: Spacing.md,
-  },
-  callButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing["3xl"],
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-  },
-  callButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: Spacing.sm,
-  },
-  newBookingButton: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
+    marginLeft: 16,
+    fontWeight: "500",
   },
 });

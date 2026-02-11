@@ -46,23 +46,22 @@ export default function LoginScreen({ navigation }: any) {
         >
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.text }]}>Witaj ponownie</Text>
+                    <Text style={[styles.title, { color: theme.text }]}>Zaloguj się</Text>
                     <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                        Zaloguj się do swojego konta
+                        Wpisz swój adres e-mail, aby kontynuować
                     </Text>
                 </View>
 
                 <View style={styles.form}>
                     {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-                    <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Email</Text>
+                    <View style={styles.inputGroup}>
                         <TextInput
                             style={[
-                                styles.input,
-                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
+                                styles.minimalInput,
+                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
                             ]}
-                            placeholder="Twój email"
+                            placeholder="Email"
                             placeholderTextColor={theme.textSecondary}
                             value={email}
                             onChangeText={setEmail}
@@ -71,14 +70,13 @@ export default function LoginScreen({ navigation }: any) {
                         />
                     </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={[styles.label, { color: theme.textSecondary }]}>Hasło</Text>
+                    <View style={styles.inputGroup}>
                         <TextInput
                             style={[
-                                styles.input,
-                                { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundDefault },
+                                styles.minimalInput,
+                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
                             ]}
-                            placeholder="Twoje hasło"
+                            placeholder="Hasło"
                             placeholderTextColor={theme.textSecondary}
                             value={password}
                             onChangeText={setPassword}
@@ -87,14 +85,14 @@ export default function LoginScreen({ navigation }: any) {
                     </View>
 
                     <TouchableOpacity
-                        style={[styles.loginButton, { backgroundColor: Colors.dark.primary }]}
+                        style={[styles.loginButton, { backgroundColor: "#000" }]}
                         onPress={handleLogin}
                         disabled={loading}
                     >
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.loginButtonText}>Zaloguj się</Text>
+                            <Text style={styles.loginButtonText}>Dalej</Text>
                         )}
                     </TouchableOpacity>
 
@@ -103,7 +101,7 @@ export default function LoginScreen({ navigation }: any) {
                             Nie masz konta?{" "}
                         </Text>
                         <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-                            <Text style={[styles.footerLink, { color: Colors.dark.primary }]}>Zarejestruj się</Text>
+                            <Text style={[styles.footerLink, { color: "#276EF1" }]}>Zarejestruj się</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -119,60 +117,48 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         padding: 24,
-        justifyContent: "center",
+        paddingTop: 100,
     },
     header: {
         marginBottom: 40,
     },
     title: {
-        fontSize: 28,
-        fontFamily: "Nunito_700Bold",
-        marginBottom: 8,
+        fontSize: 32,
+        fontWeight: "700",
+        marginBottom: 12,
     },
     subtitle: {
-        fontSize: 16,
-        fontFamily: "Nunito_400Regular",
+        fontSize: 18,
+        lineHeight: 24,
     },
     form: {
         width: "100%",
     },
-    inputContainer: {
-        marginBottom: 16,
+    inputGroup: {
+        marginBottom: 12,
     },
-    label: {
-        fontSize: 14,
-        fontFamily: "Nunito_600SemiBold",
-        marginBottom: 8,
-    },
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderRadius: 12,
+    minimalInput: {
+        height: 56,
+        borderRadius: 8,
         paddingHorizontal: 16,
         fontSize: 16,
-        fontFamily: "Nunito_400Regular",
+        fontWeight: "500",
     },
     loginButton: {
-        height: 54,
-        borderRadius: 12,
+        height: 56,
+        borderRadius: 8,
         justifyContent: "center",
         alignItems: "center",
-        marginTop: 24,
-        shadowColor: Colors.dark.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+        marginTop: 20,
     },
     loginButtonText: {
         color: "#fff",
-        fontSize: 16,
-        fontFamily: "Nunito_700Bold",
+        fontSize: 18,
+        fontWeight: "700",
     },
     errorText: {
-        color: "#ff4444",
+        color: "#E11900",
         fontSize: 14,
-        fontFamily: "Nunito_400Regular",
         marginBottom: 16,
         textAlign: "center",
     },
@@ -182,11 +168,10 @@ const styles = StyleSheet.create({
         marginTop: 32,
     },
     footerText: {
-        fontSize: 14,
-        fontFamily: "Nunito_400Regular",
+        fontSize: 15,
     },
     footerLink: {
-        fontSize: 14,
-        fontFamily: "Nunito_700Bold",
+        fontSize: 15,
+        fontWeight: "700",
     },
 });
