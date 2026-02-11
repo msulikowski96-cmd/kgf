@@ -18,6 +18,25 @@ export async function removeToken(): Promise<void> {
     await AsyncStorage.removeItem(TOKEN_KEY);
 }
 
+// Helper to safely parse JSON or return original text
+async function getErrorMessage(response: Response): Promise<string> {
+    const contentType = response.headers.get("Content-Type");
+    if (contentType && contentType.includes("application/json")) {
+        try {
+            const error = await response.json();
+            return error.message || response.statusText;
+        } catch {
+            // Fallback if parsing fails
+        }
+    }
+    const text = await response.text();
+    // If it's HTML (likely a 404 or server error page), don't show the whole HTML
+    if (text.includes("<!DOCTYPE html>") || text.includes("<html>")) {
+        return `Server returned HTML instead of JSON (Status ${response.status}: ${response.statusText}). Check if API URL is correct.`;
+    }
+    return text || `Request failed with status ${response.status}`;
+}
+
 // API client with auth headers
 async function fetchWithAuth(
     endpoint: string,
@@ -33,10 +52,12 @@ async function fetchWithAuth(
         headers.Authorization = `Bearer ${token}`;
     }
 
-    return fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
         headers,
     });
+
+    return response;
 }
 
 // Auth API
@@ -51,8 +72,8 @@ export async function register(data: InsertUser): Promise<{
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Registration failed");
+        const errorMsg = await getErrorMessage(response);
+        throw new Error(errorMsg || "Registration failed");
     }
 
     return response.json();
@@ -69,8 +90,8 @@ export async function login(data: LoginUser): Promise<{
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Login failed");
+        const errorMsg = await getErrorMessage(response);
+        throw new Error(errorMsg || "Login failed");
     }
 
     return response.json();
@@ -80,8 +101,8 @@ export async function getMe(): Promise<UserResponse> {
     const response = await fetchWithAuth("/api/auth/me");
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to get user");
+        const errorMsg = await getErrorMessage(response);
+        throw new Error(errorMsg || "Failed to get user");
     }
 
     return response.json();
@@ -92,8 +113,8 @@ export async function getProfile(): Promise<UserResponse> {
     const response = await fetchWithAuth("/api/profile");
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to get profile");
+        const errorMsg = await getErrorMessage(response);
+        throw new Error(errorMsg || "Failed to get profile");
     }
 
     return response.json();
@@ -106,8 +127,8 @@ export async function updateProfile(data: UpdateProfile): Promise<UserResponse> 
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update profile");
+        const errorMsg = await getErrorMessage(response);
+        throw new Error(errorMsg || "Failed to update profile");
     }
 
     return response.json();

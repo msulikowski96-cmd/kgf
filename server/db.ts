@@ -6,7 +6,7 @@ const { Pool } = pg;
 
 if (!process.env.DATABASE_URL) {
     throw new Error(
-        "DATABASE_URL environment variable is not set. Please configure your database connection.",
+        "DATABASE_URL environment variable is not set. Please provide a PostgreSQL connection string (e.g. postgres://user:pass@host:port/db) to start the server.",
     );
 }
 

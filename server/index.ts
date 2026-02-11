@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -233,6 +234,13 @@ function setupErrorHandler(app: express.Application) {
   configureExpoAndLanding(app);
 
   const server = await registerRoutes(app);
+
+  // Catch-all for API routes to ensure JSON responses
+  app.use("/api", (req, res) => {
+    res.status(404).json({
+      message: `API route ${req.method} ${req.originalUrl} not found`,
+    });
+  });
 
   setupErrorHandler(app);
 
