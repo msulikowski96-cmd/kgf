@@ -15,6 +15,10 @@ export const users = pgTable("users", {
   address: text("address"),
   city: text("city"),
   postalCode: text("postal_code"),
+  avatarUrl: text("avatar_url"),
+  loyaltyPoints: varchar("loyalty_points", { length: 50 }).default("0").notNull(),
+  marketingConsent: varchar("marketing_consent", { length: 10 }).default("false").notNull(),
+  pushNotifications: varchar("push_notifications", { length: 10 }).default("true").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -29,6 +33,9 @@ export const insertUserSchema = createInsertSchema(users, {
   address: z.string().optional(),
   city: z.string().optional(),
   postalCode: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  marketingConsent: z.string().optional(),
+  pushNotifications: z.string().optional(),
 }).omit({
   id: true,
   createdAt: true,

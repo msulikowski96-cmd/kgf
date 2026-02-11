@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -113,6 +114,8 @@ export default function ProfileScreen() {
   const [phone, setPhone] = useState(user?.phone || "");
   const [address, setAddress] = useState(user?.address || "");
   const [city, setCity] = useState(user?.city || "");
+  const [marketingConsent, setMarketingConsent] = useState(user?.marketingConsent === "true");
+  const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications !== "false");
 
   const handleUpdateProfile = async () => {
     try {
@@ -123,6 +126,8 @@ export default function ProfileScreen() {
         phone,
         address,
         city,
+        marketingConsent: marketingConsent ? "true" : "false",
+        pushNotifications: pushNotifications ? "true" : "false",
       });
       updateUser(updatedUser);
       setIsEditing(false);
@@ -185,6 +190,13 @@ export default function ProfileScreen() {
         >
           {user?.email}
         </ThemedText>
+
+        <View style={[styles.pointsBadge, { backgroundColor: Colors.dark.primary }]}>
+          <Feather name="star" size={14} color="#000" />
+          <ThemedText style={styles.pointsText}>
+            {user?.loyaltyPoints || "0"} pkt
+          </ThemedText>
+        </View>
       </Animated.View>
 
       {/* Profile Details Section */}
@@ -289,11 +301,77 @@ export default function ProfileScreen() {
         </View>
       </Animated.View>
 
+      {/* Settings Section */}
+      <Animated.View entering={FadeInDown.delay(300).duration(500).springify()}>
+        <View style={styles.sectionHeader}>
+          <ThemedText
+            type="small"
+            style={[styles.sectionLabel, { color: theme.textSecondary }]}
+          >
+            USTAWIENIA
+          </ThemedText>
+        </View>
+
+        <View style={[styles.settingsCard, { backgroundColor: theme.backgroundDefault }]}>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <ThemedText type="body">Powiadomienia Push</ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Status rezerwacji i promocje
+              </ThemedText>
+            </View>
+            <Switch
+              value={pushNotifications}
+              onValueChange={(val) => {
+                setPushNotifications(val);
+                if (!isEditing) {
+                  // Auto-save if not in editing mode 
+                  api.updateProfile({ pushNotifications: val ? "true" : "false" }).then(updateUser);
+                }
+              }}
+              trackColor={{ false: "#767577", true: Colors.dark.primary }}
+              thumbColor={pushNotifications ? "#fff" : "#f4f3f4"}
+            />
+          </View>
+
+          <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <ThemedText type="body">Zgody marketingowe</ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Ofert i nowości od KGF Taxi
+              </ThemedText>
+            </View>
+            <Switch
+              value={marketingConsent}
+              onValueChange={(val) => {
+                setMarketingConsent(val);
+                if (!isEditing) {
+                  api.updateProfile({ marketingConsent: val ? "true" : "false" }).then(updateUser);
+                }
+              }}
+              trackColor={{ false: "#767577", true: Colors.dark.primary }}
+              thumbColor={marketingConsent ? "#fff" : "#f4f3f4"}
+            />
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Favorites Placeholder */}
+      <MenuItem
+        icon="heart"
+        title="Ulubione Adresy"
+        subtitle="Zarządzaj swoimi miejscami"
+        onPress={() => Alert.alert("Wkrótce", "Ta funkcja będzie dostępna wkrótce!")}
+        delay={350}
+      />
+
       {/* Info Section */}
       <Animated.View entering={FadeInDown.delay(300).duration(500).springify()}>
         <ThemedText
           type="small"
-          style={[styles.sectionLabel, { color: theme.textSecondary }]}
+          style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: Spacing.xl }]}
         >
           INFORMACJE I POMOC
         </ThemedText>
@@ -459,6 +537,40 @@ const styles = StyleSheet.create({
   },
   footerText: {
     marginBottom: Spacing.xs,
+  },
+  pointsBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: Spacing.md,
+    gap: 6,
+  },
+  pointsText: {
+    color: "#000",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  settingsCard: {
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  settingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  separator: {
+    height: 1,
+    opacity: 0.1,
   },
 });
 
