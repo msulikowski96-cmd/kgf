@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "KGF Taxi",
-    "slug": "kgf-taxi",
+    "slug": "kgf",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -42,6 +42,12 @@
     ],
     "experiments": {
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a8d02468-dd69-432b-9d35-c5a98f1181ae"
+      }
+    },
+    "owner": "teabe78th"
   }
 }
