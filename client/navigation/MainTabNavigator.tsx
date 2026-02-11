@@ -94,9 +94,9 @@ export default function MainTabNavigator() {
         name="ProfileTab"
         component={ProfileStackNavigator}
         options={{
-          title: "O nas",
+          title: "Profil",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="info" size={size} color={color} />
+            <Feather name="user" size={size} color={color} />
           ),
         }}
       />
