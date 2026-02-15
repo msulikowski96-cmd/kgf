@@ -12,7 +12,7 @@ on:
 
 env:
   # Ustaw tutaj nazwę swojej aplikacji funkcji
-  AZURE_FUNCTIONAPP_NAME: YOUR_FUNCTION_APP_NAME_HERE # np. my-function-app
+  AZURE_FUNCTIONAPP_NAME: my-function-app # np. my-function-app
   # Ścieżka do katalogu projektu (relatywna do głównego katalogu repozytorium)
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'                 # np. '.', './src', './dist'
   # Wersja Node.js używana do budowania projektu
@@ -49,6 +49,6 @@ jobs:
         uses: Azure/functions-action@v1
         id: fa
         with:
-          app-name: ${{ env.hhhNAME }}
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }} # Secret zawierający dane Publish Profile
