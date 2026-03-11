@@ -2,10 +2,116 @@ import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { users, insertUserSchema, loginSchema, updateProfileSchema } from "../shared/schema";
-import { hashPassword, verifyPassword, generateToken, authenticateToken } from "./auth";
+import {
+  users,
+  insertUserSchema,
+  loginSchema,
+  updateProfileSchema,
+} from "../shared/schema";
+import {
+  hashPassword,
+  verifyPassword,
+  generateToken,
+  authenticateToken,
+} from "./auth";
+
+const rapidApiStudioTools = [
+  {
+    id: "requests",
+    name: "Requests",
+    description:
+      "Zespołowy klient żądań API do budowania grup zapytań, parametryzacji środowisk i pracy na gałęziach.",
+    benefits: [
+      "Tworzenie grup żądań dla różnych przypadków użycia.",
+      "Łatwa parametryzacja pod różne środowiska.",
+      "Współpraca zespołowa z użyciem gałęzi przed mergem do głównej wersji.",
+    ],
+  },
+  {
+    id: "testing",
+    name: "RapidAPI Testing",
+    description:
+      "Narzędzie do przekształcania zapytań API w testy kontraktowe i monitorujące.",
+    benefits: [
+      "Weryfikacja kontraktu API (np. OpenAPI / GraphQL schema).",
+      "Automatyczne testy regresji przy zmianach API.",
+      "Monitoring stabilności API w czasie.",
+    ],
+  },
+  {
+    id: "hub-listing",
+    name: "Hub Listing",
+    description:
+      "Moduł do opisu i publikacji API, zarządzania planami oraz zapraszania deweloperów i zespołów.",
+    benefits: [
+      "Tworzenie czytelnej dokumentacji i definicji API.",
+      "Publikacja API w RapidAPI Hub.",
+      "Zarządzanie planami i dostępem konsumentów.",
+    ],
+  },
+  {
+    id: "analytics",
+    name: "Analityka",
+    description:
+      "Panel analityczny do monitorowania ruchu, błędów i opóźnień na poziomie endpointów i konsumentów.",
+    benefits: [
+      "Analiza użycia API per endpoint lub konsument.",
+      "Wykrywanie błędów i skoków opóźnień.",
+      "Podejmowanie decyzji opartych na danych telemetrycznych.",
+    ],
+  },
+  {
+    id: "settings",
+    name: "Ustawienia",
+    description:
+      "Ustawienia projektu API, w tym przenoszenie własności projektu i usuwanie API.",
+    benefits: [
+      "Przenoszenie projektu między kontami i zespołami.",
+      "Centralne zarządzanie konfiguracją projektu.",
+      "Kontrolowane usuwanie API.",
+    ],
+  },
+  {
+    id: "my-apis-inbox",
+    name: "My APIs Inbox",
+    description:
+      "Jedna skrzynka odbiorcza dla wiadomości, dyskusji i ogłoszeń związanych ze wszystkimi API dostawcy.",
+    benefits: [
+      "Wspólne miejsce do komunikacji z użytkownikami API.",
+      "Obsługa wiadomości dla API osobistych i zespołowych.",
+      "Lepsza organizacja wsparcia deweloperów.",
+    ],
+  },
+] as const;
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.get("/api/rapidapi/studio", (_req, res) => {
+    res.json({
+      name: "RapidAPI Studio Toolkit API",
+      description:
+        "Ściśle zintegrowany zestaw narzędzi dla dostawców API do budowania, testowania, publikowania i utrzymania API.",
+      supportedApiTypes: ["REST", "SOAP", "GraphQL"],
+      toolsCount: rapidApiStudioTools.length,
+      tools: rapidApiStudioTools,
+    });
+  });
+
+  app.get("/api/rapidapi/studio/tools", (_req, res) => {
+    res.json(rapidApiStudioTools);
+  });
+
+  app.get("/api/rapidapi/studio/tools/:id", (req, res) => {
+    const tool = rapidApiStudioTools.find((item) => item.id === req.params.id);
+
+    if (!tool) {
+      return res.status(404).json({
+        message: "Nie znaleziono narzędzia o podanym identyfikatorze.",
+      });
+    }
+
+    return res.json(tool);
+  });
+
   // Authentication routes
 
   // Register new user
@@ -19,7 +125,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (existingUser) {
-        return res.status(400).json({ message: "User with this email already exists" });
+        return res
+          .status(400)
+          .json({ message: "User with this email already exists" });
       }
 
       // Hash password
@@ -46,7 +154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Validation error", errors: error.errors });
       }
       console.error("Registration error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -68,7 +178,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify password
-      const isPasswordValid = await verifyPassword(validatedData.password, user.password);
+      const isPasswordValid = await verifyPassword(
+        validatedData.password,
+        user.password,
+      );
 
       if (!isPasswordValid) {
         return res.status(401).json({ message: "Invalid email or password" });
@@ -86,7 +199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Validation error", errors: error.errors });
       }
       console.error("Login error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -162,7 +277,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(userWithoutPassword);
     } catch (error: any) {
       if (error.name === "ZodError") {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Validation error", errors: error.errors });
       }
       console.error("Update profile error:", error);
       res.status(500).json({ message: "Internal server error" });
