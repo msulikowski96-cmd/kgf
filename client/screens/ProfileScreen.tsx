@@ -1,572 +1,300 @@
-import React, { useState } from "react";
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Linking,
-  Image,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Switch,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View, Switch, Pressable, Linking } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-import Animated, {
-  FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 
+import { TabScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
-import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
+import { TextField } from "@/components/TextField";
+import { Button } from "@/components/Button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing } from "@/constants/theme";
+import { COMPANY } from "@/constants/company";
+import { formatPhone, isValidPhone } from "@shared/phone";
 import * as api from "@/lib/api";
+import {
+  confirmAction,
+  errorFeedback,
+  showMessage,
+  successFeedback,
+} from "@/lib/feedback";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-interface MenuItemProps {
+function LinkRow({
+  icon,
+  title,
+  value,
+  onPress,
+}: {
   icon: keyof typeof Feather.glyphMap;
   title: string;
-  subtitle?: string;
-  onPress?: () => void;
-  delay: number;
-  color?: string;
-}
-
-function MenuItem({ icon, title, subtitle, onPress, delay, color }: MenuItemProps) {
+  value: string;
+  onPress: () => void;
+}) {
   const { theme } = useTheme();
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePress = async () => {
-    if (onPress) {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      onPress();
-    }
-  };
-
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(500).springify()}>
-      <AnimatedPressable
-        onPressIn={() => {
-          scale.value = withSpring(0.98);
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1);
-        }}
-        onPress={handlePress}
-        style={[
-          styles.menuItem,
-          { backgroundColor: theme.backgroundDefault },
-          animatedStyle,
-        ]}
+    <Pressable onPress={onPress} style={styles.linkRow}>
+      <View
+        style={[styles.linkIcon, { backgroundColor: theme.backgroundTertiary }]}
       >
-        <View
-          style={[
-            styles.menuIconContainer,
-            { backgroundColor: theme.backgroundSecondary },
-          ]}
-        >
-          <Feather name={icon} size={20} color={color || Colors.dark.primary} />
-        </View>
-        <View style={styles.menuContent}>
-          <ThemedText type="body" style={styles.menuTitle}>
-            {title}
-          </ThemedText>
-          {subtitle ? (
-            <ThemedText
-              type="small"
-              style={[styles.menuSubtitle, { color: theme.textSecondary }]}
-            >
-              {subtitle}
-            </ThemedText>
-          ) : null}
-        </View>
-        <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-      </AnimatedPressable>
-    </Animated.View>
+        <Feather name={icon} size={16} color={theme.text} />
+      </View>
+      <View style={styles.flex}>
+        <ThemedText type="caption" color="tertiary">
+          {title}
+        </ThemedText>
+        <ThemedText>{value}</ThemedText>
+      </View>
+      <Feather name="chevron-right" size={18} color={theme.textTertiary} />
+    </Pressable>
   );
 }
 
 export default function ProfileScreen() {
-  const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const { user, logout, updateUser } = useAuth();
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [marketing, setMarketing] = useState(false);
+  const [errors, setErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+  }>({});
+  const [saving, setSaving] = useState(false);
 
-  const [firstName, setFirstName] = useState(user?.firstName || "");
-  const [lastName, setLastName] = useState(user?.lastName || "");
-  const [phone, setPhone] = useState(user?.phone || "");
-  const [address, setAddress] = useState(user?.address || "");
-  const [city, setCity] = useState(user?.city || "");
-  const [marketingConsent, setMarketingConsent] = useState(user?.marketingConsent === "true");
-  const [pushNotifications, setPushNotifications] = useState(user?.pushNotifications !== "false");
+  const resetForm = () => {
+    setFirstName(user?.firstName ?? "");
+    setLastName(user?.lastName ?? "");
+    setPhone(user?.phone ? formatPhone(user.phone) : "");
+    setMarketing(user?.marketingConsent === "true");
+    setErrors({});
+  };
+  useEffect(resetForm, [user]);
 
-  const handleUpdateProfile = async () => {
+  const dirty =
+    firstName !== (user?.firstName ?? "") ||
+    lastName !== (user?.lastName ?? "") ||
+    phone !== (user?.phone ? formatPhone(user.phone) : "") ||
+    marketing !== (user?.marketingConsent === "true");
+
+  const save = async () => {
+    const e: typeof errors = {};
+    if (firstName.trim().length < 2) e.firstName = "Podaj imię";
+    if (lastName.trim().length < 2) e.lastName = "Podaj nazwisko";
+    if (!isValidPhone(phone)) e.phone = "Podaj poprawny numer telefonu";
+    setErrors(e);
+    if (Object.keys(e).length) {
+      errorFeedback();
+      return;
+    }
     try {
-      setLoading(true);
-      const updatedUser = await api.updateProfile({
-        firstName,
-        lastName,
-        phone,
-        address,
-        city,
-        marketingConsent: marketingConsent ? "true" : "false",
-        pushNotifications: pushNotifications ? "true" : "false",
-      });
-      updateUser(updatedUser);
-      setIsEditing(false);
-      Alert.alert("Sukces", "Profil został zaktualizowany");
-    } catch (error: any) {
-      Alert.alert("Błąd", error.message || "Nie udało się zaktualizować profilu");
+      setSaving(true);
+      updateUser(
+        await api.updateProfile({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone,
+          marketingConsent: marketing,
+        }),
+      );
+      successFeedback();
+      showMessage("Zapisano", "Twoje dane kontaktowe zostały zaktualizowane.");
+    } catch (err) {
+      showMessage(
+        "Nie udało się zapisać",
+        err instanceof Error ? err.message : undefined,
+      );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Wyloguj się",
-      "Czy na pewno chcesz się wylogować?",
-      [
-        { text: "Anuluj", style: "cancel" },
-        { text: "Wyloguj", style: "destructive", onPress: logout },
-      ]
-    );
-  };
-
-  const handleWebsite = () => {
-    Linking.openURL("https://kgf-taxi.pl");
-  };
-
-  const handleInstagram = () => {
-    Linking.openURL("https://www.instagram.com/kgf_taxi/");
-  };
+  const initials =
+    `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() ||
+    "?";
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: tabBarHeight + Spacing.xl,
-        paddingHorizontal: Spacing.lg,
-      }}
-      scrollIndicatorInsets={{ bottom: insets.bottom }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Profile Header */}
-      <Animated.View
-        entering={FadeInDown.delay(100).duration(500).springify()}
-        style={styles.profileHeader}
-      >
-        <View style={[styles.imageContainer, { backgroundColor: theme.backgroundSecondary }]}>
-          <Image
-            source={require("../../assets/images/icon.png")}
-            style={styles.profileImage}
-            resizeMode="contain"
+    <TabScreenScrollView>
+      <View style={styles.header}>
+        <View
+          style={[
+            styles.avatar,
+            {
+              backgroundColor: theme.backgroundTertiary,
+              borderColor: theme.borderStrong,
+            },
+          ]}
+        >
+          <ThemedText type="h3">{initials}</ThemedText>
+        </View>
+        <View style={styles.flex}>
+          <ThemedText type="h3">
+            {user?.firstName} {user?.lastName}
+          </ThemedText>
+          <ThemedText color="secondary">{user?.email}</ThemedText>
+        </View>
+      </View>
+
+      <ThemedText type="label" color="tertiary" style={styles.sectionTitle}>
+        Dane kontaktowe
+      </ThemedText>
+      <View style={styles.row}>
+        <View style={styles.flex}>
+          <TextField
+            label="Imię"
+            value={firstName}
+            onChangeText={setFirstName}
+            error={errors.firstName}
           />
         </View>
-        <ThemedText type="h2" style={styles.profileName}>
-          {user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Użytkownik"}
+        <View style={styles.flex}>
+          <TextField
+            label="Nazwisko"
+            value={lastName}
+            onChangeText={setLastName}
+            error={errors.lastName}
+          />
+        </View>
+      </View>
+      <TextField
+        label="Telefon"
+        icon="phone"
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+        error={errors.phone}
+        hint="Na ten numer dzwoni kierowca"
+      />
+      <TextField
+        label="E-mail"
+        icon="mail"
+        value={user?.email ?? ""}
+        editable={false}
+        hint="Adresu e-mail nie można zmienić"
+      />
+
+      <View style={styles.switchRow}>
+        <ThemedText type="small" color="secondary" style={styles.flex}>
+          Informacje o promocjach
         </ThemedText>
-        <ThemedText
-          type="body"
-          style={[styles.profileTagline, { color: theme.textSecondary }]}
-        >
-          {user?.email}
-        </ThemedText>
+        <Switch
+          value={marketing}
+          onValueChange={setMarketing}
+          trackColor={{ true: theme.success, false: theme.backgroundTertiary }}
+        />
+      </View>
 
-        <View style={[styles.pointsBadge, { backgroundColor: "#000" }]}>
-          <Feather name="star" size={14} color="#fff" />
-          <ThemedText style={styles.pointsText} lightColor="#fff" darkColor="#fff">
-            {user?.loyaltyPoints || "0"} pkt
-          </ThemedText>
+      {dirty ? (
+        <View style={styles.actions}>
+          <Button
+            title="Cofnij"
+            variant="ghost"
+            onPress={resetForm}
+            style={styles.flex}
+          />
+          <Button
+            title="Zapisz zmiany"
+            onPress={save}
+            loading={saving}
+            style={styles.flex}
+          />
         </View>
-      </Animated.View>
+      ) : null}
 
-      {/* Profile Details Section */}
-      <Animated.View entering={FadeInDown.delay(200).duration(500).springify()}>
-        <View style={styles.sectionHeader}>
-          <ThemedText
-            type="small"
-            style={[styles.sectionLabel, { color: theme.textSecondary }]}
-          >
-            MOJE DANE
-          </ThemedText>
-          <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
-            <ThemedText type="small" style={{ color: "#276EF1", fontWeight: "700" }}>
-              {isEditing ? "Anuluj" : "Edytuj dane"}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.detailsCard, { backgroundColor: theme.backgroundDefault }]}>
-          {isEditing ? (
-            <View style={styles.editForm}>
-              <View style={styles.row}>
-                <View style={styles.inputGroup}>
-                  <ThemedText type="small" style={styles.inputLabel}>Imię</ThemedText>
-                  <TextInput
-                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholder="Wpisz imię"
-                  />
-                </View>
-                <View style={styles.inputGroup}>
-                  <ThemedText type="small" style={styles.inputLabel}>Nazwisko</ThemedText>
-                  <TextInput
-                    style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholder="Wpisz nazwisko"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <ThemedText type="small" style={styles.inputLabel}>Telefon</ThemedText>
-                <TextInput
-                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholder="Numer telefonu"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <ThemedText type="small" style={styles.inputLabel}>Adres</ThemedText>
-                <TextInput
-                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="Ulica i nr domu"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <ThemedText type="small" style={styles.inputLabel}>Miasto</ThemedText>
-                <TextInput
-                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                  value={city}
-                  onChangeText={setCity}
-                  placeholder="Miasto"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: Colors.dark.primary }]}
-                onPress={handleUpdateProfile}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText style={styles.saveButtonText} lightColor="#fff" darkColor="#fff">Zapisz zmiany</ThemedText>
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              <View style={styles.detailItem}>
-                <Feather name="user" size={16} color={theme.textSecondary} style={styles.detailIcon} />
-                <ThemedText type="body">{user?.firstName || "Nie podano"} {user?.lastName || ""}</ThemedText>
-              </View>
-              <View style={styles.detailItem}>
-                <Feather name="phone" size={16} color={theme.textSecondary} style={styles.detailIcon} />
-                <ThemedText type="body">{user?.phone || "Nie podano"}</ThemedText>
-              </View>
-              <View style={styles.detailItem}>
-                <Feather name="map-pin" size={16} color={theme.textSecondary} style={styles.detailIcon} />
-                <ThemedText type="body">{user?.address ? `${user.address}, ${user.city || ""}` : "Nie podano"}</ThemedText>
-              </View>
-            </>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* Settings Section */}
-      <Animated.View entering={FadeInDown.delay(300).duration(500).springify()}>
-        <View style={styles.sectionHeader}>
-          <ThemedText
-            type="small"
-            style={[styles.sectionLabel, { color: theme.textSecondary }]}
-          >
-            USTAWIENIA
-          </ThemedText>
-        </View>
-
-        <View style={[styles.settingsCard, { backgroundColor: theme.backgroundDefault }]}>
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <ThemedText type="body">Powiadomienia Push</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Status rezerwacji i promocje
-              </ThemedText>
-            </View>
-            <Switch
-              value={pushNotifications}
-              onValueChange={(val) => {
-                setPushNotifications(val);
-                if (!isEditing) {
-                  api.updateProfile({ pushNotifications: val ? "true" : "false" }).then(updateUser);
-                }
-              }}
-              trackColor={{ false: "#E0E0E0", true: "#000" }}
-              thumbColor="#fff"
-            />
-          </View>
-
-          <View style={[styles.separator, { backgroundColor: theme.border }]} />
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <ThemedText type="body">Zgody marketingowe</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Ofert i nowości od KGF Taxi
-              </ThemedText>
-            </View>
-            <Switch
-              value={marketingConsent}
-              onValueChange={(val) => {
-                setMarketingConsent(val);
-                if (!isEditing) {
-                  api.updateProfile({ marketingConsent: val ? "true" : "false" }).then(updateUser);
-                }
-              }}
-              trackColor={{ false: "#E0E0E0", true: "#000" }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Favorites Placeholder */}
-      <MenuItem
-        icon="heart"
-        title="Ulubione Adresy"
-        subtitle="Zarządzaj swoimi miejscami"
-        onPress={() => Alert.alert("Wkrótce", "Ta funkcja będzie dostępna wkrótce!")}
-        delay={350}
-      />
-
-      {/* Info Section */}
-      <Animated.View entering={FadeInDown.delay(300).duration(500).springify()}>
-        <ThemedText
-          type="small"
-          style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: Spacing.xl }]}
-        >
-          INFORMACJE I POMOC
-        </ThemedText>
-      </Animated.View>
-
-      <MenuItem
-        icon="globe"
-        title="Strona internetowa"
-        subtitle="kgf-taxi.pl"
-        onPress={handleWebsite}
-        delay={400}
-      />
-
-      <MenuItem
-        icon="instagram"
-        title="Instagram"
-        subtitle="@kgf_taxi"
-        onPress={handleInstagram}
-        delay={500}
-      />
-
-      <MenuItem
-        icon="log-out"
-        title="Wyloguj się"
-        onPress={handleLogout}
-        delay={600}
-        color="#ff4444"
-      />
-
-      {/* Footer */}
-      <Animated.View
-        entering={FadeInDown.delay(800).duration(500).springify()}
-        style={styles.footer}
+      <ThemedText type="label" color="tertiary" style={styles.sectionTitle}>
+        Kontakt z {COMPANY.name}
+      </ThemedText>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.backgroundDefault,
+            borderColor: theme.border,
+          },
+        ]}
       >
-        <ThemedText
-          type="small"
-          style={[styles.footerText, { color: theme.textSecondary }]}
-        >
-          KGF Taxi - Twoje bezpieczne przejazdy
-        </ThemedText>
-        <ThemedText
-          type="small"
-          style={[styles.footerText, { color: theme.textSecondary }]}
-        >
-          Wersja 1.1.0
-        </ThemedText>
-      </Animated.View>
-    </ScrollView>
+        <LinkRow
+          icon="phone"
+          title={`Telefon · ${COMPANY.hours}`}
+          value={COMPANY.phoneDisplay}
+          onPress={() => Linking.openURL(`tel:${COMPANY.phone}`)}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <LinkRow
+          icon="message-circle"
+          title="SMS"
+          value={COMPANY.phoneDisplay}
+          onPress={() => Linking.openURL(`sms:${COMPANY.phone}`)}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <LinkRow
+          icon="instagram"
+          title="Instagram"
+          value={COMPANY.instagramHandle}
+          onPress={() => Linking.openURL(COMPANY.instagramUrl)}
+        />
+      </View>
+
+      <Button
+        title="Wyloguj się"
+        icon="log-out"
+        variant="danger"
+        style={styles.logout}
+        onPress={() =>
+          confirmAction({
+            title: "Wylogować się?",
+            message:
+              "Aby zamówić przejazd, trzeba będzie zalogować się ponownie.",
+            confirmText: "Wyloguj",
+            destructive: true,
+            onConfirm: logout,
+          })
+        }
+      />
+    </TabScreenScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  profileHeader: {
-    alignItems: "center",
-    marginBottom: Spacing["3xl"],
-  },
-  imageContainer: {
-    padding: 8,
-    borderRadius: BorderRadius.xl,
-    marginBottom: Spacing.lg,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-  },
-  profileName: {
-    marginBottom: Spacing.xs,
-  },
-  profileTagline: {
-    textAlign: "center",
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.md,
-    marginTop: Spacing.lg,
-  },
-  sectionLabel: {
-    fontWeight: "600",
-    letterSpacing: 1,
-  },
-  detailsCard: {
-    borderRadius: BorderRadius.md,
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  detailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.md,
-  },
-  detailIcon: {
-    marginRight: Spacing.md,
-    width: 20,
-  },
-  editForm: {
-    gap: Spacing.md,
-  },
-  row: {
-    flexDirection: "row",
-    gap: Spacing.md,
-  },
-  inputGroup: {
-    flex: 1,
-    gap: 4,
-  },
-  inputLabel: {
-    fontWeight: "600",
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  input: {
-    height: 44,
+  flex: { flex: 1 },
+  header: { flexDirection: "row", alignItems: "center", gap: Spacing.lg },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 1,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.md,
-    fontSize: 15,
-  },
-  saveButton: {
-    height: 48,
-    borderRadius: BorderRadius.sm,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: Spacing.sm,
-  },
-  saveButtonText: {
-    fontWeight: "700",
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.lg,
-    borderBottomWidth: 1,
-  },
-  menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: Spacing.md,
   },
-  menuContent: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontWeight: "500",
-  },
-  menuSubtitle: {
-    marginTop: 2,
-  },
-  footer: {
-    alignItems: "center",
-    marginTop: Spacing["3xl"],
-    paddingBottom: Spacing.xl,
-  },
-  footerText: {
-    marginBottom: Spacing.xs,
-  },
-  pointsBadge: {
+  sectionTitle: { marginTop: Spacing["2xl"], marginBottom: Spacing.md },
+  row: { flexDirection: "row", gap: Spacing.md },
+  switchRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: Spacing.md,
-    gap: 6,
+    gap: Spacing.md,
+    marginTop: Spacing.xs,
   },
-  pointsText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  settingsCard: {
-    borderRadius: BorderRadius.md,
+  actions: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.lg },
+  card: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    marginBottom: Spacing.lg,
   },
-  settingItem: {
+  linkRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: Spacing.md,
     paddingVertical: Spacing.md,
   },
-  settingInfo: {
-    flex: 1,
-    marginRight: Spacing.md,
+  linkIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  separator: {
-    height: 1,
-    opacity: 0.1,
-  },
+  divider: { height: StyleSheet.hairlineWidth },
+  logout: { marginTop: Spacing["2xl"] },
 });
-

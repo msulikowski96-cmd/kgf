@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KGF Premium – Dyspozytor</title>
+    <style>
+      :root {
+        --bg: #0a0a0b;
+        --surface: #141416;
+        --surface-2: #1c1c1f;
+        --border: #2a2a2e;
+        --text: #f5f5f7;
+        --muted: #9a9aa0;
+        --accent: #e82127;
+        --ok: #30d158;
+        --warn: #ffd60a;
+        --info: #64d2ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+        z-index: 1;
+      }
+      h1 { font-size: 18px; margin: 0; letter-spacing: 0.04em; }
+      h1 span { color: var(--accent); }
+      main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+      input, select, button {
+        font: inherit;
+        color: var(--text);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+      }
+      button { cursor: pointer; }
+      button:hover { border-color: var(--muted); }
+      button.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+      .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+      .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+      .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+      .muted { color: var(--muted); font-size: 13px; }
+      .route { margin: 10px 0; }
+      .route div { margin: 2px 0; }
+      .badge { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); }
+      .s-pending { color: var(--warn); }
+      .s-confirmed { color: var(--info); }
+      .s-in_progress { color: var(--ok); }
+      .s-completed { color: var(--muted); }
+      .s-cancelled { color: var(--accent); }
+      .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+      .actions button { font-size: 13px; padding: 6px 10px; }
+      a { color: var(--info); }
+      #message { margin: 12px 0; color: var(--muted); }
+      .notes { background: var(--surface-2); border-radius: 8px; padding: 8px; margin-top: 8px; font-size: 13px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>KGF <span>PREMIUM</span> · Dyspozytor</h1>
+      <div class="controls">
+        <input id="key" type="password" placeholder="Klucz dyspozytora" autocomplete="current-password" />
+        <button class="primary" id="save">Zaloguj</button>
+        <select id="filter">
+          <option value="active">Aktywne</option>
+          <option value="all">Wszystkie</option>
+          <option value="pending">Oczekujące</option>
+          <option value="confirmed">Potwierdzone</option>
+          <option value="in_progress">W trakcie</option>
+          <option value="completed">Zakończone</option>
+          <option value="cancelled">Anulowane</option>
+        </select>
+        <button id="refresh">Odśwież</button>
+      </div>
+    </header>
+    <main>
+      <div id="message"></div>
+      <div class="grid" id="list"></div>
+    </main>
+    <script>
+      const STATUS = {
+        pending: "Oczekuje",
+        confirmed: "Potwierdzony",
+        in_progress: "W trakcie",
+        completed: "Zakończony",
+        cancelled: "Anulowany",
+      };
+      const VEHICLES = { model3: "Model 3", modelY: "Model Y", modelS: "Model S", modelX: "Model X" };
+      const PAYMENT = { card: "Karta", cash: "Gotówka" };
+      const NEXT = {
+        pending: ["confirmed", "cancelled"],
+        confirmed: ["in_progress", "cancelled"],
+        in_progress: ["completed"],
+        completed: [],
+        cancelled: [],
+      };
+      const ACTION_LABEL = {
+        confirmed: "Potwierdź",
+        in_progress: "Rozpocznij",
+        completed: "Zakończ",
+        cancelled: "Anuluj",
+      };
+
+      const $ = (id) => document.getElementById(id);
+      let key = "";
+      try { key = localStorage.getItem("kgf-admin-key") || ""; } catch {}
+      $("key").value = key;
+
+      function el(tag, props = {}, children = []) {
+        const node = document.createElement(tag);
+        Object.assign(node, props);
+        for (const child of children) node.append(child);
+        return node;
+      }
+
+      function fmtDate(value) {
+        return new Date(value).toLocaleString("pl-PL", {
+          weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+        });
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(path, {
+          ...options,
+          headers: { "Content-Type": "application/json", "x-admin-key": key },
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.message || "Błąd " + res.status);
+        return body;
+      }
+
+      async function load() {
+        if (!key) {
+          $("message").textContent = "Wpisz klucz dyspozytora (ADMIN_API_KEY).";
+          return;
+        }
+        try {
+          const rides = await api("/api/admin/rides");
+          render(rides);
+        } catch (e) {
+          $("message").textContent = e.message;
+          $("list").replaceChildren();
+        }
+      }
+
+      function render(rides) {
+        const filter = $("filter").value;
+        const shown = rides.filter((r) =>
+          filter === "all" ? true
+          : filter === "active" ? ["pending", "confirmed", "in_progress"].includes(r.status)
+          : r.status === filter,
+        );
+        $("message").textContent = shown.length
+          ? `Zamówień: ${shown.length} · odświeżono ${new Date().toLocaleTimeString("pl-PL")}`
+          : "Brak zamówień w tym widoku.";
+
+        $("list").replaceChildren(...shown.map((r) => {
+          const when = r.scheduledAt ? fmtDate(r.scheduledAt) : "Jak najszybciej";
+          const actions = NEXT[r.status].map((s) =>
+            el("button", { textContent: ACTION_LABEL[s], onclick: () => setStatus(r.id, s) }),
+          );
+          const card = el("div", { className: "card" }, [
+            el("div", { className: "row" }, [
+              el("strong", { textContent: when }),
+              el("span", { className: "badge s-" + r.status, textContent: STATUS[r.status] }),
+            ]),
+            el("div", { className: "route" }, [
+              el("div", { textContent: "● " + r.pickupAddress }),
+              el("div", { textContent: "■ " + r.destinationAddress }),
+            ]),
+            el("div", { className: "muted", textContent:
+              `Tesla ${VEHICLES[r.vehicleModel] || r.vehicleModel} · ${r.passengers} os. · ${PAYMENT[r.paymentMethod] || r.paymentMethod}` }),
+            el("div", { className: "row", style: "margin-top:8px" }, [
+              el("span", { textContent: r.contactName }),
+              el("a", { href: "tel:" + r.contactPhone, textContent: r.contactPhone }),
+            ]),
+            el("div", { className: "muted", textContent: "Złożono: " + fmtDate(r.createdAt) }),
+          ]);
+          if (r.notes) card.append(el("div", { className: "notes", textContent: r.notes }));
+          if (actions.length) card.append(el("div", { className: "actions" }, actions));
+          return card;
+        }));
+      }
+
+      async function setStatus(id, status) {
+        try {
+          await api("/api/admin/rides/" + encodeURIComponent(id), {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          });
+          await load();
+        } catch (e) {
+          alert(e.message);
+        }
+      }
+
+      $("save").onclick = () => {
+        key = $("key").value.trim();
+        try { localStorage.setItem("kgf-admin-key", key); } catch {}
+        load();
+      };
+      $("refresh").onclick = load;
+      $("filter").onchange = load;
+      load();
+      setInterval(load, 20000);
+    </script>
+  </body>
+</html>

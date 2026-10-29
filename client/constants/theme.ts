@@ -1,46 +1,35 @@
 import { Platform } from "react-native";
 
-// Uber-inspired brand colors
-const uberBlack = "#000000";
-const uberWhite = "#FFFFFF";
-const uberBlue = "#276EF1";
-const uberGray = "#F6F6F6";
+// Premium dark palette: deep black, graphite surfaces, white actions, red accent.
+const palette = {
+  text: "#F5F5F7",
+  textSecondary: "#9A9AA0",
+  textTertiary: "#6C6C72",
+  buttonText: "#0A0A0B",
+  tabIconDefault: "#6C6C72",
+  tabIconSelected: "#F5F5F7",
+  link: "#F5F5F7",
+  primary: "#F5F5F7",
+  accent: "#E82127",
+  accentSoft: "rgba(232, 33, 39, 0.14)",
+  backgroundRoot: "#0A0A0B",
+  backgroundDefault: "#141416",
+  backgroundSecondary: "#1C1C1F",
+  backgroundTertiary: "#26262A",
+  border: "#2A2A2E",
+  borderStrong: "#3A3A3F",
+  success: "#30D158",
+  warning: "#FFD60A",
+  info: "#64D2FF",
+  error: "#FF453A",
+};
 
-export const Colors = {
-  light: {
-    text: "#000000",
-    textSecondary: "#5E5E5E",
-    buttonText: "#FFFFFF",
-    tabIconDefault: "#5E5E5E",
-    tabIconSelected: "#000000",
-    link: uberBlue,
-    primary: uberBlack,
-    primaryDark: "#1F1F1F",
-    backgroundRoot: uberWhite,
-    backgroundDefault: uberWhite,
-    backgroundSecondary: uberGray,
-    backgroundTertiary: "#EEEEEE",
-    border: "#EEEEEE",
-    success: "#05A357",
-    error: "#E11900",
-  },
-  dark: {
-    text: "#FFFFFF",
-    textSecondary: "#AFAFAF",
-    buttonText: "#000000",
-    tabIconDefault: "#AFAFAF",
-    tabIconSelected: "#FFFFFF",
-    link: uberBlue,
-    primary: uberWhite,
-    primaryDark: "#F1F1F1",
-    backgroundRoot: uberBlack,
-    backgroundDefault: "#121212",
-    backgroundSecondary: "#1F1F1F",
-    backgroundTertiary: "#292929",
-    border: "#292929",
-    success: "#05A357",
-    error: "#FF3B30",
-  },
+export type ThemeColors = typeof palette;
+
+// The app uses one dark theme in both system modes.
+export const Colors: { light: ThemeColors; dark: ThemeColors } = {
+  light: palette,
+  dark: palette,
 };
 
 export const Spacing = {
@@ -70,40 +59,30 @@ export const BorderRadius = {
 
 export const Typography = {
   h1: {
-    fontSize: 32,
+    fontSize: 34,
     lineHeight: 40,
     fontWeight: "700" as const,
+    letterSpacing: -0.5,
   },
   h2: {
     fontSize: 28,
-    lineHeight: 36,
+    lineHeight: 34,
     fontWeight: "700" as const,
+    letterSpacing: -0.3,
   },
-  h3: {
-    fontSize: 24,
-    lineHeight: 32,
+  h3: { fontSize: 22, lineHeight: 28, fontWeight: "600" as const },
+  h4: { fontSize: 18, lineHeight: 24, fontWeight: "600" as const },
+  body: { fontSize: 16, lineHeight: 22, fontWeight: "400" as const },
+  small: { fontSize: 14, lineHeight: 20, fontWeight: "400" as const },
+  caption: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
+  label: {
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: "600" as const,
+    letterSpacing: 1.2,
+    textTransform: "uppercase" as const,
   },
-  h4: {
-    fontSize: 20,
-    lineHeight: 28,
-    fontWeight: "600" as const,
-  },
-  body: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: "400" as const,
-  },
-  small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "400" as const,
-  },
-  link: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: "400" as const,
-  },
+  link: { fontSize: 16, lineHeight: 22, fontWeight: "600" as const },
 };
 
 export const Fonts = Platform.select({

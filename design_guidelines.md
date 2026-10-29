@@ -1,71 +1,28 @@
-# KGF Taxi - Android App Design Guidelines
+# KGF Premium – design guidelines
 
-## Brand Identity
-**Purpose**: Mobile app for KGF Taxi company enabling customers to quickly book rides, view services, contact drivers, and learn about the company.
+**Purpose**: customers book premium rides in a Tesla (Model 3 / Y / S / X) in Poznań and the surrounding area.
 
-**Location**: Poznań and surrounding areas, Poland
+**Aesthetic**: quiet luxury. Deep black surfaces, white primary actions, a single red accent used sparingly (labels, tail light, logo bar). No yellow "taxi" cues.
 
-**Aesthetic Direction**: Professional & Bold - High contrast design with strong taxi-yellow accent, clean typography, and maximum readability. The app should feel reliable, efficient, and instantly recognizable as a taxi service.
+## Navigation
+Bottom tabs: **Start** (home), **Zamów** (booking), **Przejazdy** (my rides), **Profil**. Ride details open as a full screen above the tabs. Login and registration come before the tabs.
 
-**Memorable Element**: Striking taxi-yellow (#FFC107) used generously against deep charcoal surfaces. Every action button pulses with confidence.
+## Colours (`client/constants/theme.ts`)
+- Background `#0A0A0B`, surfaces `#141416` / `#1C1C1F` / `#26262A`
+- Border `#2A2A2E`, strong border `#3A3A3F`
+- Text `#F5F5F7`, secondary `#9A9AA0`, tertiary `#6C6C72`
+- Primary button: white `#F5F5F7` with black text
+- Accent red `#E82127`
+- Status: pending `#FFD60A`, confirmed `#64D2FF`, in progress `#30D158`, cancelled `#FF453A`
 
-## Navigation Architecture
-**Type**: Tab Navigation (4 tabs)
+## Type
+System font. Large titles 28–34 with slight negative tracking; section labels 12 pt, uppercase, wide tracking.
 
-**Tabs**:
-1. **Główna** (Home) - Hero section, services overview, call button
-2. **Usługi** (Services) - Detailed service descriptions
-3. **Kontakt** (Contact) - Phone, SMS, Instagram, hours
-4. **O nas** (About) - Company info, stats, links
+## Components
+- Cards: 16–24 radius, 1 px border, no shadows
+- Buttons: 56 high, 12 radius, spring press animation
+- Car illustrations: `TeslaCar` SVG (sedan / SUV roofline, colour per model). Never use the Tesla logo.
+- Icons: Feather (`@expo/vector-icons`)
 
-## Contact Information
-- **Phone**: +48 537 353 052
-- **Instagram**: @kgf_taxi
-- **Website**: kgf-taxi.pl
-- **Hours**: 24/7
-
-## Services
-1. **Poznań i okolice** - City rides and surrounding areas
-2. **Przejazdy VIP** - Exclusive luxury car rides
-3. **Przejazdy Biznesowe** - Business transfers
-
-## Color Palette
-- **Primary**: #FFC107 (Taxi Yellow) - CTAs, FAB, highlights
-- **Primary Dark**: #FFA000 - pressed states, shadows
-- **Background**: #121212 (Dark charcoal)
-- **Surface**: #1E1E1E (Elevated surfaces, cards)
-- **Surface Variant**: #2C2C2C (Secondary cards)
-- **Text Primary**: #FFFFFF
-- **Text Secondary**: #B0B0B0
-- **Border**: #3A3A3A
-- **Success**: #4CAF50 (available status)
-- **Error**: #F44336 (alerts)
-
-## Typography
-- **Font**: System font (Roboto on Android)
-- **Type Scale**:
-  - Hero: 32sp, Bold
-  - Title: 24sp, Bold
-  - Heading: 18sp, Medium
-  - Body: 16sp, Regular
-  - Caption: 14sp, Regular
-  - Button: 16sp, Medium
-
-## Visual Design
-- Touchables: Spring animation on press
-- Cards: 24dp corner radius, elevation via background color
-- Buttons: 12dp corner radius
-- Icons: Feather icons from @expo/vector-icons
-- FAB shadow: shadowOffset {width: 0, height: 4}, shadowOpacity: 0.3, shadowRadius: 8
-
-## Generated Assets
-1. **icon.png** - App icon with taxi silhouette on yellow
-2. **splash-icon.png** - Splash screen icon
-3. **hero-taxi.png** - Hero section background image
-4. **service-city.png** - City service illustration
-5. **service-vip.png** - VIP service illustration
-6. **service-business.png** - Business service illustration
-
-## Key Taglines (Polish)
-- "Przejazdy takie jak lubisz" - Rides the way you like them
-- "Podróżuj komfortowo i bezpiecznie" - Travel comfortably and safely
+## Contact
+Phone +48 537 353 052 · Instagram @kgf_taxi · 24/7

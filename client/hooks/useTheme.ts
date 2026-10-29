@@ -1,13 +1,6 @@
 import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/useColorScheme";
 
+// The app has a single premium dark theme.
 export function useTheme() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const theme = Colors[colorScheme ?? "light"];
-
-  return {
-    theme,
-    isDark,
-  };
+  return { theme: Colors.dark, isDark: true };
 }

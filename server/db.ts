@@ -1,18 +1,10 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-const { Pool } = pg;
 import * as schema from "../shared/schema";
 
-
-
-if (!process.env.DATABASE_URL) {
-    throw new Error(
-        "DATABASE_URL environment variable is not set. Please provide a PostgreSQL connection string (e.g. postgres://user:pass@host:port/db) to start the server.",
-    );
+export function createDb(connectionString: string) {
+  const pool = new pg.Pool({ connectionString });
+  return drizzle(pool, { schema });
 }
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
-
-export const db = drizzle(pool, { schema });
+export type Db = ReturnType<typeof createDb>;
