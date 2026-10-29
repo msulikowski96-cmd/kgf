@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "KGF Taxi",
+    "name": "KGF Premium",
     "slug": "kgf",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "kgftaxi",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -14,8 +14,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FFC107",
-        "foregroundImage": "./assets/images/icon.png"
+        "backgroundColor": "#0A0A0B",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -32,10 +33,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#121212",
-          "dark": {
-            "backgroundColor": "#121212"
-          }
+          "backgroundColor": "#0A0A0B"
         }
       ],
       "expo-web-browser"
@@ -48,6 +46,7 @@
         "projectId": "a8d02468-dd69-432b-9d35-c5a98f1181ae"
       }
     },
-    "owner": "teabe78th"
+    "owner": "teabe78th",
+    "backgroundColor": "#0A0A0B"
   }
 }

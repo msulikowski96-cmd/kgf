@@ -1,241 +1,299 @@
 import React, { useState } from "react";
-import {
-    StyleSheet,
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    ActivityIndicator,
-} from "react-native";
-import { useAuth } from "../contexts/AuthContext";
-import { Colors } from "../constants/theme";
-import { useTheme } from "../hooks/useTheme";
+import { StyleSheet, View, Pressable, Switch } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 
-export default function RegisterScreen({ navigation }: any) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
-    const { register } = useAuth();
-    const { theme } = useTheme();
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { ThemedText } from "@/components/ThemedText";
+import { TextField } from "@/components/TextField";
+import { Button } from "@/components/Button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing } from "@/constants/theme";
+import { errorFeedback, successFeedback } from "@/lib/feedback";
+import { isValidPhone } from "@shared/phone";
 
-    const handleRegister = async () => {
-        if (!email || !password || !confirmPassword) {
-            setError("Proszę wypełnić wymagane pola");
-            return;
-        }
+type Field =
+  | "firstName"
+  | "lastName"
+  | "email"
+  | "phone"
+  | "password"
+  | "confirm"
+  | "terms";
 
-        if (password !== confirmPassword) {
-            setError("Hasła nie są identyczne");
-            return;
-        }
+export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const { register } = useAuth();
 
-        if (password.length < 6) {
-            setError("Hasło musi mieć co najmniej 6 znaków");
-            return;
-        }
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirm: "",
+  });
+  const [terms, setTerms] = useState(false);
+  const [marketing, setMarketing] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
+  const [serverError, setServerError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-        try {
-            setLoading(true);
-            setError("");
-            await register({
-                email,
-                password,
-                firstName,
-                lastName,
-            });
-        } catch (err: any) {
-            setError(err.message || "Błąd rejestracji");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const set = (key: keyof typeof form) => (value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => ({ ...e, [key]: undefined }));
+  };
 
-    return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+  const validate = () => {
+    const e: Partial<Record<Field, string>> = {};
+    if (form.firstName.trim().length < 2) e.firstName = "Podaj imię";
+    if (form.lastName.trim().length < 2) e.lastName = "Podaj nazwisko";
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim()))
+      e.email = "Podaj poprawny adres e-mail";
+    if (!isValidPhone(form.phone))
+      e.phone = "Podaj poprawny numer, np. 600 100 200";
+    if (form.password.length < 8)
+      e.password = "Hasło musi mieć co najmniej 8 znaków";
+    if (form.confirm !== form.password) e.confirm = "Hasła nie są takie same";
+    if (!terms) e.terms = "Zaakceptuj regulamin, aby założyć konto";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleRegister = async () => {
+    setServerError("");
+    if (!validate()) {
+      errorFeedback();
+      return;
+    }
+    try {
+      setLoading(true);
+      await register({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email.trim(),
+        phone: form.phone,
+        password: form.password,
+        marketingConsent: marketing,
+      });
+      successFeedback();
+    } catch (err) {
+      setServerError(
+        err instanceof Error ? err.message : "Nie udało się założyć konta",
+      );
+      errorFeedback();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <KeyboardAwareScrollViewCompat
+      style={{ backgroundColor: theme.backgroundRoot }}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: insets.bottom + Spacing["2xl"] },
+      ]}
+    >
+      <ThemedText type="h1">Załóż konto</ThemedText>
+      <ThemedText color="secondary" style={styles.subtitle}>
+        Twoje dane kontaktowe przekażemy kierowcy, aby mógł się z Tobą
+        skontaktować przy odbiorze.
+      </ThemedText>
+
+      <ThemedText type="label" color="tertiary" style={styles.section}>
+        Dane osobowe
+      </ThemedText>
+      <View style={styles.row}>
+        <View style={styles.half}>
+          <TextField
+            label="Imię"
+            placeholder="Jan"
+            value={form.firstName}
+            onChangeText={set("firstName")}
+            autoComplete="given-name"
+            textContentType="givenName"
+            error={errors.firstName}
+          />
+        </View>
+        <View style={styles.half}>
+          <TextField
+            label="Nazwisko"
+            placeholder="Kowalski"
+            value={form.lastName}
+            onChangeText={set("lastName")}
+            autoComplete="family-name"
+            textContentType="familyName"
+            error={errors.lastName}
+          />
+        </View>
+      </View>
+
+      <ThemedText type="label" color="tertiary" style={styles.section}>
+        Kontakt
+      </ThemedText>
+      <TextField
+        label="Telefon"
+        icon="phone"
+        placeholder="600 100 200"
+        value={form.phone}
+        onChangeText={set("phone")}
+        keyboardType="phone-pad"
+        autoComplete="tel"
+        textContentType="telephoneNumber"
+        error={errors.phone}
+        hint="Numer bez kierunkowego traktujemy jako polski (+48)"
+      />
+      <TextField
+        label="E-mail"
+        icon="mail"
+        placeholder="jan@example.pl"
+        value={form.email}
+        onChangeText={set("email")}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+        error={errors.email}
+      />
+
+      <ThemedText type="label" color="tertiary" style={styles.section}>
+        Hasło
+      </ThemedText>
+      <TextField
+        label="Hasło"
+        icon="lock"
+        placeholder="Minimum 8 znaków"
+        value={form.password}
+        onChangeText={set("password")}
+        secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
+        error={errors.password}
+      />
+      <TextField
+        label="Powtórz hasło"
+        icon="lock"
+        placeholder="Powtórz hasło"
+        value={form.confirm}
+        onChangeText={set("confirm")}
+        secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
+        error={errors.confirm}
+      />
+
+      <Pressable
+        style={styles.checkRow}
+        onPress={() => {
+          setTerms((t) => !t);
+          setErrors((e) => ({ ...e, terms: undefined }));
+        }}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: terms }}
+      >
+        <View
+          style={[
+            styles.checkbox,
+            { borderColor: errors.terms ? theme.error : theme.borderStrong },
+            terms && {
+              backgroundColor: theme.primary,
+              borderColor: theme.primary,
+            },
+          ]}
         >
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.text }]}>Stwórz konto</Text>
-                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                        Dołącz do KGF Taxi i zacznij podróżować
-                    </Text>
-                </View>
+          {terms ? (
+            <Feather name="check" size={14} color={theme.buttonText} />
+          ) : null}
+        </View>
+        <ThemedText type="small" color="secondary" style={styles.checkText}>
+          Akceptuję regulamin usługi i politykę prywatności
+        </ThemedText>
+      </Pressable>
+      {errors.terms ? (
+        <ThemedText
+          type="caption"
+          style={{ color: theme.error, marginBottom: Spacing.sm }}
+        >
+          {errors.terms}
+        </ThemedText>
+      ) : null}
 
-                <View style={styles.form}>
-                    {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <View style={styles.switchRow}>
+        <ThemedText type="small" color="secondary" style={styles.checkText}>
+          Chcę otrzymywać informacje o promocjach (opcjonalnie)
+        </ThemedText>
+        <Switch
+          value={marketing}
+          onValueChange={setMarketing}
+          trackColor={{ true: theme.success, false: theme.backgroundTertiary }}
+        />
+      </View>
 
-                    <View style={styles.row}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                            <TextInput
-                                style={[
-                                    styles.minimalInput,
-                                    { color: theme.text, backgroundColor: theme.backgroundSecondary },
-                                ]}
-                                placeholder="Imię"
-                                placeholderTextColor={theme.textSecondary}
-                                value={firstName}
-                                onChangeText={setFirstName}
-                            />
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 8 }}>
-                            <TextInput
-                                style={[
-                                    styles.minimalInput,
-                                    { color: theme.text, backgroundColor: theme.backgroundSecondary },
-                                ]}
-                                placeholder="Nazwisko"
-                                placeholderTextColor={theme.textSecondary}
-                                value={lastName}
-                                onChangeText={setLastName}
-                            />
-                        </View>
-                    </View>
+      {serverError ? (
+        <View
+          style={[styles.serverError, { backgroundColor: theme.accentSoft }]}
+        >
+          <Feather name="alert-circle" size={16} color={theme.error} />
+          <ThemedText type="small" style={{ color: theme.error, flex: 1 }}>
+            {serverError}
+          </ThemedText>
+        </View>
+      ) : null}
 
-                    <View style={styles.inputGroup}>
-                        <TextInput
-                            style={[
-                                styles.minimalInput,
-                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
-                            ]}
-                            placeholder="Email"
-                            placeholderTextColor={theme.textSecondary}
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <TextInput
-                            style={[
-                                styles.minimalInput,
-                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
-                            ]}
-                            placeholder="Hasło"
-                            placeholderTextColor={theme.textSecondary}
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <TextInput
-                            style={[
-                                styles.minimalInput,
-                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
-                            ]}
-                            placeholder="Potwierdź hasło"
-                            placeholderTextColor={theme.textSecondary}
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            secureTextEntry
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        style={[styles.registerButton, { backgroundColor: "#000" }]}
-                        onPress={handleRegister}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.registerButtonText}>Zarejestruj się</Text>
-                        )}
-                    </TouchableOpacity>
-
-                    <View style={styles.footer}>
-                        <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                            Masz już konto?{" "}
-                        </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-                            <Text style={[styles.footerLink, { color: "#276EF1" }]}>Zaloguj się</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
-    );
+      <Button
+        title="Załóż konto"
+        onPress={handleRegister}
+        loading={loading}
+        style={styles.button}
+      />
+    </KeyboardAwareScrollViewCompat>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: 24,
-        paddingTop: 80,
-    },
-    header: {
-        marginBottom: 32,
-    },
-    title: {
-        fontSize: 32,
-        fontWeight: "700",
-        marginBottom: 12,
-    },
-    subtitle: {
-        fontSize: 18,
-        lineHeight: 24,
-    },
-    form: {
-        width: "100%",
-    },
-    row: {
-        flexDirection: "row",
-        marginBottom: 12,
-    },
-    inputGroup: {
-        marginBottom: 12,
-    },
-    minimalInput: {
-        height: 56,
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        fontSize: 16,
-        fontWeight: "500",
-    },
-    registerButton: {
-        height: 56,
-        borderRadius: 8,
-        justifyContent: "center",
-        alignItems: "center",
-        marginTop: 20,
-    },
-    registerButtonText: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "700",
-    },
-    errorText: {
-        color: "#E11900",
-        fontSize: 14,
-        marginBottom: 16,
-        textAlign: "center",
-    },
-    footer: {
-        flexDirection: "row",
-        justifyContent: "center",
-        marginTop: 32,
-        marginBottom: 40,
-    },
-    footerText: {
-        fontSize: 15,
-    },
-    footerLink: {
-        fontSize: 15,
-        fontWeight: "700",
-    },
+  content: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.lg,
+    maxWidth: 560,
+    width: "100%",
+    alignSelf: "center",
+  },
+  subtitle: { marginTop: Spacing.sm },
+  section: { marginTop: Spacing.xl, marginBottom: Spacing.md },
+  row: { flexDirection: "row", gap: Spacing.md },
+  half: { flex: 1 },
+  checkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: BorderRadius.xs + 2,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: Spacing.md,
+  },
+  checkText: { flex: 1 },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  serverError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.lg,
+  },
+  button: { marginTop: Spacing.xl },
 });

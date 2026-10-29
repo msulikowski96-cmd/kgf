@@ -1,80 +1,110 @@
-import React, { ReactNode } from "react";
-import { StyleSheet, Pressable, ViewStyle, StyleProp } from "react-native";
+import React from "react";
+import {
+  StyleSheet,
+  Pressable,
+  ViewStyle,
+  StyleProp,
+  ActivityIndicator,
+  View,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  WithSpringConfig,
 } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing } from "@/constants/theme";
+import { tapFeedback } from "@/lib/feedback";
+
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 interface ButtonProps {
+  title: string;
   onPress?: () => void;
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
+  variant?: Variant;
+  icon?: keyof typeof Feather.glyphMap;
+  loading?: boolean;
   disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
 }
-
-const springConfig: WithSpringConfig = {
-  damping: 15,
-  mass: 0.3,
-  stiffness: 150,
-  overshootClamping: true,
-  energyThreshold: 0.001,
-};
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Button({
+  title,
   onPress,
-  children,
-  style,
+  variant = "primary",
+  icon,
+  loading = false,
   disabled = false,
+  style,
+  testID,
 }: ButtonProps) {
   const { theme } = useTheme();
   const scale = useSharedValue(1);
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+  const inactive = disabled || loading;
 
-  const handlePressIn = () => {
-    if (!disabled) {
-      scale.value = withSpring(0.98, springConfig);
-    }
+  const colors: Record<Variant, { bg: string; fg: string; border: string }> = {
+    primary: { bg: theme.primary, fg: theme.buttonText, border: theme.primary },
+    secondary: {
+      bg: theme.backgroundSecondary,
+      fg: theme.text,
+      border: theme.border,
+    },
+    ghost: { bg: "transparent", fg: theme.text, border: theme.borderStrong },
+    danger: { bg: "transparent", fg: theme.error, border: theme.error },
   };
-
-  const handlePressOut = () => {
-    if (!disabled) {
-      scale.value = withSpring(1, springConfig);
-    }
-  };
+  const c = colors[variant];
 
   return (
     <AnimatedPressable
-      onPress={disabled ? undefined : onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={disabled}
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: inactive, busy: loading }}
+      onPress={
+        inactive
+          ? undefined
+          : () => {
+              tapFeedback();
+              onPress?.();
+            }
+      }
+      onPressIn={() => {
+        if (!inactive)
+          scale.value = withSpring(0.97, { damping: 15, stiffness: 200 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+      }}
+      disabled={inactive}
       style={[
         styles.button,
         {
-          backgroundColor: theme.link,
-          opacity: disabled ? 0.5 : 1,
+          backgroundColor: c.bg,
+          borderColor: c.border,
+          opacity: disabled ? 0.45 : 1,
         },
-        style,
         animatedStyle,
+        style,
       ]}
     >
-      <ThemedText
-        type="body"
-        style={[styles.buttonText, { color: theme.buttonText }]}
-      >
-        {children}
-      </ThemedText>
+      {loading ? (
+        <ActivityIndicator color={c.fg} />
+      ) : (
+        <View style={styles.content}>
+          {icon ? <Feather name={icon} size={18} color={c.fg} /> : null}
+          <ThemedText type="body" style={[styles.text, { color: c.fg }]}>
+            {title}
+          </ThemedText>
+        </View>
+      )}
     </AnimatedPressable>
   );
 }
@@ -82,11 +112,19 @@ export function Button({
 const styles = StyleSheet.create({
   button: {
     height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: Spacing.xl,
   },
-  buttonText: {
+  content: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  text: {
     fontWeight: "600",
+    letterSpacing: 0.2,
   },
 });

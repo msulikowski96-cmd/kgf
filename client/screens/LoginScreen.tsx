@@ -1,177 +1,158 @@
-import React, { useState } from "react";
-import {
-    StyleSheet,
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    ActivityIndicator,
-} from "react-native";
-import { useAuth } from "../contexts/AuthContext";
-import { Colors } from "../constants/theme";
-import { useTheme } from "../hooks/useTheme";
+import React, { useRef, useState } from "react";
+import { StyleSheet, View, TextInput, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-export default function LoginScreen({ navigation }: any) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
-    const { theme } = useTheme();
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { ThemedText } from "@/components/ThemedText";
+import { TextField } from "@/components/TextField";
+import { Button } from "@/components/Button";
+import { Logo } from "@/components/Logo";
+import { TeslaCar } from "@/components/TeslaCar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
+import { Spacing } from "@/constants/theme";
+import { errorFeedback } from "@/lib/feedback";
 
-    const handleLogin = async () => {
-        if (!email || !password) {
-            setError("Proszę podać email i hasło");
-            return;
-        }
+export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const { theme } = useTheme();
+  const { login } = useAuth();
+  const passwordRef = useRef<TextInput>(null);
 
-        try {
-            setLoading(true);
-            setError("");
-            await login(email, password);
-        } catch (err: any) {
-            setError(err.message || "Błąd logowania");
-        } finally {
-            setLoading(false);
-        }
-    };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-        >
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.text }]}>Zaloguj się</Text>
-                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                        Wpisz swój adres e-mail, aby kontynuować
-                    </Text>
-                </View>
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      setError("Podaj e-mail i hasło");
+      errorFeedback();
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+      await login(email.trim(), password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Nie udało się zalogować");
+      errorFeedback();
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                <View style={styles.form}>
-                    {error ? <Text style={styles.errorText}>{error}</Text> : null}
+  return (
+    <KeyboardAwareScrollViewCompat
+      style={{ backgroundColor: theme.backgroundRoot }}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: insets.top + Spacing["3xl"],
+          paddingBottom: insets.bottom + Spacing.xl,
+        },
+      ]}
+    >
+      <Animated.View entering={FadeInDown.duration(600)} style={styles.hero}>
+        <Logo size="lg" />
+        <View style={styles.car}>
+          <TeslaCar width={300} />
+        </View>
+        <ThemedText type="h2" style={styles.center}>
+          Przejazdy premium Teslą
+        </ThemedText>
+        <ThemedText color="secondary" style={[styles.center, styles.subtitle]}>
+          Ciche, elektryczne i zawsze punktualne. Zaloguj się, aby zamówić
+          przejazd.
+        </ThemedText>
+      </Animated.View>
 
-                    <View style={styles.inputGroup}>
-                        <TextInput
-                            style={[
-                                styles.minimalInput,
-                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
-                            ]}
-                            placeholder="Email"
-                            placeholderTextColor={theme.textSecondary}
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
-                    </View>
+      <Animated.View entering={FadeInDown.delay(150).duration(600)}>
+        <TextField
+          label="E-mail"
+          icon="mail"
+          placeholder="jan@example.pl"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          testID="login-email"
+        />
+        <TextField
+          ref={passwordRef}
+          label="Hasło"
+          icon="lock"
+          placeholder="Twoje hasło"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="password"
+          textContentType="password"
+          returnKeyType="go"
+          onSubmitEditing={handleLogin}
+          testID="login-password"
+        />
 
-                    <View style={styles.inputGroup}>
-                        <TextInput
-                            style={[
-                                styles.minimalInput,
-                                { color: theme.text, backgroundColor: theme.backgroundSecondary },
-                            ]}
-                            placeholder="Hasło"
-                            placeholderTextColor={theme.textSecondary}
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                        />
-                    </View>
+        {error ? (
+          <ThemedText
+            type="small"
+            style={[styles.error, { color: theme.error }]}
+          >
+            {error}
+          </ThemedText>
+        ) : null}
 
-                    <TouchableOpacity
-                        style={[styles.loginButton, { backgroundColor: "#000" }]}
-                        onPress={handleLogin}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.loginButtonText}>Dalej</Text>
-                        )}
-                    </TouchableOpacity>
+        <Button
+          title="Zaloguj się"
+          onPress={handleLogin}
+          loading={loading}
+          style={styles.button}
+        />
 
-                    <View style={styles.footer}>
-                        <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                            Nie masz konta?{" "}
-                        </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-                            <Text style={[styles.footerLink, { color: "#276EF1" }]}>Zarejestruj się</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </ScrollView>
-        </KeyboardAvoidingView>
-    );
+        <View style={styles.footer}>
+          <ThemedText color="secondary">Nie masz konta? </ThemedText>
+          <Pressable
+            onPress={() => navigation.navigate("Register")}
+            hitSlop={8}
+          >
+            <ThemedText type="link">Załóż konto</ThemedText>
+          </Pressable>
+        </View>
+      </Animated.View>
+    </KeyboardAwareScrollViewCompat>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: 24,
-        paddingTop: 100,
-    },
-    header: {
-        marginBottom: 40,
-    },
-    title: {
-        fontSize: 32,
-        fontWeight: "700",
-        marginBottom: 12,
-    },
-    subtitle: {
-        fontSize: 18,
-        lineHeight: 24,
-    },
-    form: {
-        width: "100%",
-    },
-    inputGroup: {
-        marginBottom: 12,
-    },
-    minimalInput: {
-        height: 56,
-        borderRadius: 8,
-        paddingHorizontal: 16,
-        fontSize: 16,
-        fontWeight: "500",
-    },
-    loginButton: {
-        height: 56,
-        borderRadius: 8,
-        justifyContent: "center",
-        alignItems: "center",
-        marginTop: 20,
-    },
-    loginButtonText: {
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "700",
-    },
-    errorText: {
-        color: "#E11900",
-        fontSize: 14,
-        marginBottom: 16,
-        textAlign: "center",
-    },
-    footer: {
-        flexDirection: "row",
-        justifyContent: "center",
-        marginTop: 32,
-    },
-    footerText: {
-        fontSize: 15,
-    },
-    footerLink: {
-        fontSize: 15,
-        fontWeight: "700",
-    },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: Spacing.xl,
+    justifyContent: "center",
+    maxWidth: 520,
+    width: "100%",
+    alignSelf: "center",
+  },
+  hero: {
+    alignItems: "center",
+    marginBottom: Spacing["2xl"],
+  },
+  car: {
+    marginVertical: Spacing.xl,
+  },
+  center: { textAlign: "center" },
+  subtitle: { marginTop: Spacing.sm, maxWidth: 320 },
+  error: { marginBottom: Spacing.md, textAlign: "center" },
+  button: { marginTop: Spacing.sm },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: Spacing.xl,
+  },
 });

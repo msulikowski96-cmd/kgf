@@ -1,69 +1,96 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { timingSafeEqual } from "crypto";
 import type { Request, Response, NextFunction } from "express";
-import type { UserResponse } from "../shared/schema";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 const SALT_ROUNDS = 10;
 
-// Hash password
-export async function hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, SALT_ROUNDS);
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be set in production.");
+  }
+  return "dev-only-secret-change-me";
 }
 
-// Verify password
-export async function verifyPassword(
-    password: string,
-    hashedPassword: string,
+const JWT_SECRET = getJwtSecret();
+
+export function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
+export function verifyPassword(
+  password: string,
+  hashedPassword: string,
 ): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword);
+  return bcrypt.compare(password, hashedPassword);
 }
 
-// Generate JWT token
 export function generateToken(userId: string): string {
-    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d" });
 }
 
-// Verify JWT token
 export function verifyToken(token: string): { userId: string } | null {
-    try {
-        return jwt.verify(token, JWT_SECRET) as { userId: string };
-    } catch {
-        return null;
-    }
+  try {
+    return jwt.verify(token, JWT_SECRET) as { userId: string };
+  } catch {
+    return null;
+  }
 }
 
-// Authentication middleware
 declare global {
-    namespace Express {
-        interface Request {
-            userId?: string;
-            user?: UserResponse;
-        }
+  namespace Express {
+    interface Request {
+      userId?: string;
     }
+  }
 }
 
 export function authenticateToken(
-    req: Request,
-    res: Response,
-    next: NextFunction,
+  req: Request,
+  res: Response,
+  next: NextFunction,
 ): void {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-        ? authHeader.substring(7)
-        : null;
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.substring(7)
+    : null;
 
-    if (!token) {
-        res.status(401).json({ message: "Authentication required" });
-        return;
-    }
+  if (!token) {
+    res.status(401).json({ message: "Zaloguj się, aby kontynuować" });
+    return;
+  }
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-        res.status(401).json({ message: "Invalid or expired token" });
-        return;
-    }
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    res.status(401).json({ message: "Sesja wygasła. Zaloguj się ponownie" });
+    return;
+  }
 
-    req.userId = decoded.userId;
-    next();
+  req.userId = decoded.userId;
+  next();
+}
+
+// Dispatcher endpoints are protected by a shared key from ADMIN_API_KEY.
+export function authenticateAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const expected = process.env.ADMIN_API_KEY;
+  if (!expected) {
+    res.status(503).json({
+      message: "Panel dyspozytora jest wyłączony. Ustaw ADMIN_API_KEY.",
+    });
+    return;
+  }
+  const provided = req.header("x-admin-key") ?? "";
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    res.status(401).json({ message: "Niepoprawny klucz dyspozytora" });
+    return;
+  }
+  next();
 }

@@ -18,6 +18,8 @@ export function useScreenOptions({
     headerTransparent: transparent,
     headerBlurEffect: isDark ? "dark" : "light",
     headerTintColor: theme.text,
+    headerShadowVisible: false,
+    headerTitleStyle: { fontWeight: "600", color: theme.text },
     headerStyle: {
       backgroundColor: Platform.select({
         ios: undefined,
