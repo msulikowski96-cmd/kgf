@@ -177,7 +177,7 @@
           );
           const card = el("div", { className: "card" }, [
             el("div", { className: "row" }, [
-              el("strong", { textContent: when }),
+              el("strong", { textContent: (r.source === "phone" ? "☎ " : "") + when }),
               el("span", { className: "badge s-" + r.status, textContent: STATUS[r.status] }),
             ]),
             el("div", { className: "route" }, [
