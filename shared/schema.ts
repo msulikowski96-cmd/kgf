@@ -51,9 +51,10 @@ export const rides = pgTable(
     id: varchar("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    userId: varchar("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    // null for phone orders from callers without an account
+    userId: varchar("user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     pickupAddress: text("pickup_address").notNull(),
     destinationAddress: text("destination_address").notNull(),
     // null means "as soon as possible"
@@ -65,20 +66,28 @@ export const rides = pgTable(
     notes: text("notes"),
     paymentMethod: text("payment_method").default("card").notNull(),
     status: text("status").default("pending").notNull(),
+    // "app" = ordered by the customer, "phone" = taken by the dispatcher during a call
+    source: text("source").default("app").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [index("rides_user_id_idx").on(table.userId)],
+  (table) => [
+    index("rides_user_id_idx").on(table.userId),
+    index("rides_contact_phone_idx").on(table.contactPhone),
+  ],
 );
 
 export type User = typeof users.$inferSelect;
 export type UserResponse = Omit<User, "password">;
+export type RideSource = "app" | "phone";
+
 export type Ride = Omit<
   typeof rides.$inferSelect,
-  "paymentMethod" | "status"
+  "paymentMethod" | "status" | "source"
 > & {
   paymentMethod: PaymentMethod;
   status: RideStatus;
+  source: RideSource;
 };
 
 // ---------- Validation ----------

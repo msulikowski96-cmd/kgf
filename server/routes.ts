@@ -17,7 +17,8 @@ import {
   CANCELLABLE_STATUSES,
   MAX_SCHEDULE_DAYS,
 } from "../shared/fleet";
-import { createStorage } from "./storage";
+import { createStorage, type NewRide } from "./storage";
+import { isValidPhone, normalizePhone } from "../shared/phone";
 import {
   hashPassword,
   verifyPassword,
@@ -38,6 +39,37 @@ class HttpError extends Error {
 function publicUser(user: User): UserResponse {
   const { password: _password, ...rest } = user;
   return rest;
+}
+
+// Validates an order body and checks the rules that depend on the fleet and the clock
+function validateNewRide(body: unknown): NewRide {
+  const data = createRideSchema.parse(body);
+  const vehicle = getVehicle(data.vehicleModel)!;
+
+  if (data.passengers > vehicle.seats) {
+    throw new HttpError(
+      400,
+      `${vehicle.name} zabiera maksymalnie ${vehicle.seats} pasażerów`,
+    );
+  }
+
+  let scheduledAt: Date | null = null;
+  if (data.scheduledAt) {
+    scheduledAt = new Date(data.scheduledAt);
+    const now = Date.now();
+    // Small tolerance for clock differences between phone and server
+    if (scheduledAt.getTime() < now - 5 * 60_000) {
+      throw new HttpError(400, "Wybrany termin już minął");
+    }
+    if (scheduledAt.getTime() > now + MAX_SCHEDULE_DAYS * 24 * 60 * 60_000) {
+      throw new HttpError(
+        400,
+        `Przejazd można zaplanować maksymalnie ${MAX_SCHEDULE_DAYS} dni naprzód`,
+      );
+    }
+  }
+
+  return { ...data, notes: data.notes || undefined, scheduledAt };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -93,37 +125,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ---------- Rides ----------
 
   app.post("/api/rides", authenticateToken, async (req, res) => {
-    const data = createRideSchema.parse(req.body);
-    const vehicle = getVehicle(data.vehicleModel)!;
-
-    if (data.passengers > vehicle.seats) {
-      throw new HttpError(
-        400,
-        `${vehicle.name} zabiera maksymalnie ${vehicle.seats} pasażerów`,
-      );
-    }
-
-    let scheduledAt: Date | null = null;
-    if (data.scheduledAt) {
-      scheduledAt = new Date(data.scheduledAt);
-      const now = Date.now();
-      // Small tolerance for clock differences between phone and server
-      if (scheduledAt.getTime() < now - 5 * 60_000) {
-        throw new HttpError(400, "Wybrany termin już minął");
-      }
-      if (scheduledAt.getTime() > now + MAX_SCHEDULE_DAYS * 24 * 60 * 60_000) {
-        throw new HttpError(
-          400,
-          `Przejazd można zaplanować maksymalnie ${MAX_SCHEDULE_DAYS} dni naprzód`,
-        );
-      }
-    }
-
-    const ride = await storage.createRide(req.userId!, {
-      ...data,
-      notes: data.notes || undefined,
-      scheduledAt,
-    });
+    const ride = await storage.createRide(
+      req.userId!,
+      validateNewRide(req.body),
+    );
     res.status(201).json(ride);
   });
 
@@ -160,6 +165,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/rides", authenticateAdmin, async (_req, res) => {
     res.json(await storage.listAllRides());
+  });
+
+  // Caller lookup for the call assistant app: who is calling and their recent rides
+  app.get("/api/admin/customer", authenticateAdmin, async (req, res) => {
+    const raw = String(req.query.phone ?? "");
+    if (!isValidPhone(raw)) throw new HttpError(400, "Niepoprawny numer");
+    const phone = normalizePhone(raw);
+    const [user, recentRides] = await Promise.all([
+      storage.getUserByPhone(phone),
+      storage.listRidesByContactPhone(phone, 5),
+    ]);
+    const name = user
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+      : (recentRides[0]?.contactName ?? null);
+    res.json({
+      phone,
+      name,
+      hasAccount: Boolean(user),
+      rideCount: recentRides.length,
+      recentRides: recentRides.map((r) => ({
+        pickupAddress: r.pickupAddress,
+        destinationAddress: r.destinationAddress,
+        vehicleModel: r.vehicleModel,
+        status: r.status,
+        createdAt: r.createdAt,
+      })),
+    });
+  });
+
+  // Order taken by phone; linked to the customer's account when the number matches
+  app.post("/api/admin/rides", authenticateAdmin, async (req, res) => {
+    const data = validateNewRide(req.body);
+    const user = await storage.getUserByPhone(data.contactPhone);
+    const ride = await storage.createRide(user?.id ?? null, data, "phone");
+    res.status(201).json(ride);
   });
 
   app.patch("/api/admin/rides/:id", authenticateAdmin, async (req, res) => {

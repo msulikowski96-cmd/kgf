@@ -23,6 +23,8 @@ Ceny są przykładowe – zmień je w `shared/fleet.ts`. Aplikacja nie liczy tra
 
 **Dyspozytor** – panel WWW pod adresem `http://<serwer>:5000/admin`. Logowanie kluczem z `ADMIN_API_KEY`. Widać w nim zamówienia z danymi kontaktowymi klienta; dyspozytor zmienia status: Oczekuje → Potwierdzony → W trakcie → Zakończony (lub Anulowany). Klient widzi zmianę w aplikacji.
 
+**Asystent rozmów (Android)** – osobna aplikacja dla dyspozytora w [`android-call-assistant/`](android-call-assistant/README.md). Po odebraniu połączenia pokazuje nad ekranem rozmowy skrypt, rozpoznaje klienta po numerze i zapisuje zamówienie telefoniczne w systemie.
+
 Dane kontaktowe firmy (telefon, Instagram) są w [`client/constants/company.ts`](client/constants/company.ts).
 
 ## Uruchomienie
@@ -86,3 +88,5 @@ migrations/ migracje bazy danych
 | POST | `/api/rides/:id/cancel` | anulowanie |
 | GET | `/api/admin/rides` | wszystkie zamówienia (nagłówek `x-admin-key`) |
 | PATCH | `/api/admin/rides/:id` | zmiana statusu (nagłówek `x-admin-key`) |
+| GET | `/api/admin/customer?phone=` | kto dzwoni (dla asystenta rozmów) |
+| POST | `/api/admin/rides` | zamówienie przyjęte telefonicznie |

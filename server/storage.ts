@@ -5,6 +5,7 @@ import {
   rides,
   type User,
   type Ride,
+  type RideSource,
   type CreateRideData,
 } from "../shared/schema";
 import type { RideStatus } from "../shared/fleet";
@@ -35,7 +36,13 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(data: NewUser): Promise<User>;
   updateUser(id: string, patch: UserPatch): Promise<User | undefined>;
-  createRide(userId: string, data: NewRide): Promise<Ride>;
+  getUserByPhone(phone: string): Promise<User | undefined>;
+  createRide(
+    userId: string | null,
+    data: NewRide,
+    source?: RideSource,
+  ): Promise<Ride>;
+  listRidesByContactPhone(phone: string, limit: number): Promise<Ride[]>;
   getRide(id: string): Promise<Ride | undefined>;
   listRidesForUser(userId: string): Promise<Ride[]>;
   listAllRides(): Promise<Ride[]>;
@@ -85,12 +92,29 @@ export class DbStorage implements IStorage {
     return user;
   }
 
-  async createRide(userId: string, data: NewRide) {
+  async getUserByPhone(phone: string) {
+    return this.db.query.users.findFirst({ where: eq(users.phone, phone) });
+  }
+
+  async createRide(
+    userId: string | null,
+    data: NewRide,
+    source: RideSource = "app",
+  ) {
     const [ride] = await this.db
       .insert(rides)
-      .values({ ...data, userId })
+      .values({ ...data, userId, source })
       .returning();
     return toRide(ride);
+  }
+
+  async listRidesByContactPhone(phone: string, limit: number) {
+    const rows = await this.db.query.rides.findMany({
+      where: eq(rides.contactPhone, phone),
+      orderBy: desc(rides.createdAt),
+      limit,
+    });
+    return rows.map(toRide);
   }
 
   async getRide(id: string) {
@@ -185,7 +209,21 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
-  async createRide(userId: string, data: NewRide) {
+  async getUserByPhone(phone: string) {
+    return Array.from(this.users.values()).find((u) => u.phone === phone);
+  }
+
+  async listRidesByContactPhone(phone: string, limit: number) {
+    return (await this.listAllRides())
+      .filter((r) => r.contactPhone === phone)
+      .slice(0, limit);
+  }
+
+  async createRide(
+    userId: string | null,
+    data: NewRide,
+    source: RideSource = "app",
+  ) {
     const now = new Date();
     const ride: Ride = {
       id: randomUUID(),
@@ -200,6 +238,7 @@ export class MemStorage implements IStorage {
       notes: data.notes ?? null,
       paymentMethod: data.paymentMethod,
       status: "pending",
+      source,
       createdAt: now,
       updatedAt: now,
     };
