@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { StyleSheet, View, Switch, Pressable, Linking } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
@@ -11,7 +12,9 @@ import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing } from "@/constants/theme";
 import { COMPANY } from "@/constants/company";
 import { formatPhone, isValidPhone } from "@shared/phone";
+import { getVehicle } from "@shared/fleet";
 import * as api from "@/lib/api";
+import { queryKeys } from "@/lib/queryClient";
 import {
   confirmAction,
   errorFeedback,
@@ -46,6 +49,67 @@ function LinkRow({
       </View>
       <Feather name="chevron-right" size={18} color={theme.textTertiary} />
     </Pressable>
+  );
+}
+
+const DRIVER_STATUS: Record<string, string> = {
+  pending: "Czeka na weryfikację",
+  approved: "Zweryfikowany",
+  blocked: "Zablokowany",
+};
+
+function DriverInfo() {
+  const { theme } = useTheme();
+  const { data } = useQuery({
+    queryKey: queryKeys.driverProfile,
+    queryFn: api.getDriverProfile,
+  });
+  if (!data) return null;
+  const vehicle = getVehicle(data.vehicleModel);
+  return (
+    <>
+      <ThemedText type="label" color="tertiary" style={styles.sectionTitle}>
+        Konto kierowcy
+      </ThemedText>
+      <View
+        style={[
+          styles.card,
+          styles.driverCard,
+          {
+            backgroundColor: theme.backgroundDefault,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <View style={styles.driverRow}>
+          <ThemedText color="secondary">Status</ThemedText>
+          <ThemedText style={styles.bold}>
+            {DRIVER_STATUS[data.status]}
+          </ThemedText>
+        </View>
+        <View style={styles.driverRow}>
+          <ThemedText color="secondary">Samochód</ThemedText>
+          <ThemedText style={styles.bold}>
+            {vehicle?.name} · {data.carColor.toLowerCase()}
+          </ThemedText>
+        </View>
+        <View style={styles.driverRow}>
+          <ThemedText color="secondary">Rejestracja</ThemedText>
+          <ThemedText style={styles.bold}>{data.plate}</ThemedText>
+        </View>
+        <View style={styles.driverRow}>
+          <ThemedText color="secondary">Ocena</ThemedText>
+          <ThemedText style={styles.bold}>
+            {data.rating != null
+              ? `★ ${data.rating.toFixed(1).replace(".", ",")} (${data.ratingCount})`
+              : "Brak ocen"}
+          </ThemedText>
+        </View>
+        <ThemedText type="caption" color="tertiary">
+          Zmianę samochodu zgłoś w biurze – dyspozytor zaktualizuje dane.
+        </ThemedText>
+      </View>
+    </>
   );
 }
 
@@ -165,7 +229,11 @@ export default function ProfileScreen() {
         onChangeText={setPhone}
         keyboardType="phone-pad"
         error={errors.phone}
-        hint="Na ten numer dzwoni kierowca"
+        hint={
+          user?.role === "driver"
+            ? "Ten numer zobaczy pasażer po przyjęciu kursu"
+            : "Na ten numer dzwoni kierowca"
+        }
       />
       <TextField
         label="E-mail"
@@ -203,8 +271,10 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
+      {user?.role === "driver" ? <DriverInfo /> : null}
+
       <ThemedText type="label" color="tertiary" style={styles.sectionTitle}>
-        Kontakt z {COMPANY.name}
+        Kontakt z biurem
       </ThemedText>
       <View
         style={[
@@ -246,7 +316,9 @@ export default function ProfileScreen() {
           confirmAction({
             title: "Wylogować się?",
             message:
-              "Aby zamówić przejazd, trzeba będzie zalogować się ponownie.",
+              user?.role === "driver"
+                ? "Przestaniesz otrzymywać zlecenia do ponownego zalogowania."
+                : "Aby zamówić przejazd, trzeba będzie zalogować się ponownie.",
             confirmText: "Wyloguj",
             destructive: true,
             onConfirm: logout,
@@ -296,5 +368,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   divider: { height: StyleSheet.hairlineWidth },
+  bold: { fontWeight: "600" },
+  driverCard: { paddingVertical: Spacing.md, gap: Spacing.sm },
+  driverRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+  },
   logout: { marginTop: Spacing["2xl"] },
 });

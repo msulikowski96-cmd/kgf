@@ -2,10 +2,13 @@ import React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import MainTabNavigator from "@/navigation/MainTabNavigator";
+import MainTabNavigator, {
+  DriverTabNavigator,
+} from "@/navigation/MainTabNavigator";
 import LoginScreen from "@/screens/LoginScreen";
 import RegisterScreen from "@/screens/RegisterScreen";
 import RideDetailsScreen from "@/screens/RideDetailsScreen";
+import PlaceSearchScreen from "@/screens/PlaceSearchScreen";
 import { Logo } from "@/components/Logo";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootStackNavigator() {
   const screenOptions = useScreenOptions({ transparent: false });
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { theme } = useTheme();
 
   if (isLoading) {
@@ -38,7 +41,13 @@ export default function RootStackNavigator() {
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
-      {isAuthenticated ? (
+      {isAuthenticated && user?.role === "driver" ? (
+        <Stack.Screen
+          name="DriverMain"
+          component={DriverTabNavigator}
+          options={{ headerShown: false }}
+        />
+      ) : isAuthenticated ? (
         <>
           <Stack.Screen
             name="Main"
@@ -48,7 +57,16 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="RideDetails"
             component={RideDetailsScreen}
-            options={{ title: "Szczegóły przejazdu", headerBackTitle: "Wróć" }}
+            options={{ title: "Twój przejazd", headerBackTitle: "Wróć" }}
+          />
+          <Stack.Screen
+            name="PlaceSearch"
+            component={PlaceSearchScreen}
+            options={{
+              presentation: "modal",
+              title: "Wybierz miejsce",
+              headerBackTitle: "Wróć",
+            }}
           />
         </>
       ) : (

@@ -52,6 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    // A driver who logs out stops getting rides straight away
+    if (user?.role === "driver")
+      await api.setDriverOnline(false).catch(() => undefined);
     await api.removeToken();
     queryClient.clear();
     setUser(null);

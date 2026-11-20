@@ -11,6 +11,8 @@ export function StatusBadge({ status }: { status: RideStatus }) {
   const color: Record<RideStatus, string> = {
     pending: theme.warning,
     confirmed: theme.info,
+    en_route: theme.info,
+    arrived: theme.success,
     in_progress: theme.success,
     completed: theme.textSecondary,
     cancelled: theme.error,

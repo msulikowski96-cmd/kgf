@@ -12,11 +12,20 @@ export type MainTabParamList = {
   ProfileTab: undefined;
 };
 
+export type DriverTabParamList = {
+  DriverHomeTab: undefined;
+  DriverRidesTab: undefined;
+  DriverProfileTab: undefined;
+};
+
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
+  DriverMain: NavigatorScreenParams<DriverTabParamList> | undefined;
   RideDetails: { id: string };
+  // `then: "booking"` opens the booking form after choosing the place
+  PlaceSearch: { field: "pickup" | "destination"; then?: "booking" };
 };
 
 declare global {

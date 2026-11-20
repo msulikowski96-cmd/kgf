@@ -12,6 +12,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing } from "@/constants/theme";
 import { errorFeedback, successFeedback } from "@/lib/feedback";
 import { isValidPhone } from "@shared/phone";
+import { FLEET, type VehicleId } from "@shared/fleet";
 
 type Field =
   | "firstName"
@@ -20,7 +21,9 @@ type Field =
   | "phone"
   | "password"
   | "confirm"
-  | "terms";
+  | "terms"
+  | "plate"
+  | "carColor";
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -36,6 +39,10 @@ export default function RegisterScreen() {
     confirm: "",
   });
   const [terms, setTerms] = useState(false);
+  const [asDriver, setAsDriver] = useState(false);
+  const [vehicleModel, setVehicleModel] = useState<VehicleId>("model3");
+  const [plate, setPlate] = useState("");
+  const [carColor, setCarColor] = useState("");
   const [marketing, setMarketing] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [serverError, setServerError] = useState("");
@@ -58,6 +65,10 @@ export default function RegisterScreen() {
       e.password = "Hasło musi mieć co najmniej 8 znaków";
     if (form.confirm !== form.password) e.confirm = "Hasła nie są takie same";
     if (!terms) e.terms = "Zaakceptuj regulamin, aby założyć konto";
+    if (asDriver && !/^[A-Za-z0-9 ]{4,10}$/.test(plate.trim()))
+      e.plate = "Podaj numer rejestracyjny, np. PO 12345";
+    if (asDriver && carColor.trim().length < 3)
+      e.carColor = "Podaj kolor samochodu";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -77,6 +88,9 @@ export default function RegisterScreen() {
         phone: form.phone,
         password: form.password,
         marketingConsent: marketing,
+        driver: asDriver
+          ? { vehicleModel, plate: plate.trim(), carColor: carColor.trim() }
+          : undefined,
       });
       successFeedback();
     } catch (err) {
@@ -102,6 +116,42 @@ export default function RegisterScreen() {
         Twoje dane kontaktowe przekażemy kierowcy, aby mógł się z Tobą
         skontaktować przy odbiorze.
       </ThemedText>
+
+      <ThemedText type="label" color="tertiary" style={styles.section}>
+        Typ konta
+      </ThemedText>
+      <View
+        style={[styles.segment, { backgroundColor: theme.backgroundSecondary }]}
+      >
+        {[false, true].map((driver) => (
+          <Pressable
+            key={String(driver)}
+            onPress={() => setAsDriver(driver)}
+            style={[
+              styles.segmentItem,
+              asDriver === driver && {
+                backgroundColor: theme.backgroundTertiary,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: asDriver === driver }}
+            testID={driver ? "register-driver" : "register-customer"}
+          >
+            <Feather
+              name={driver ? "navigation" : "user"}
+              size={15}
+              color={asDriver === driver ? theme.text : theme.textSecondary}
+            />
+            <ThemedText
+              type="small"
+              color={asDriver === driver ? "primary" : "secondary"}
+              style={styles.bold}
+            >
+              {driver ? "Jestem kierowcą" : "Zamawiam przejazdy"}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
 
       <ThemedText type="label" color="tertiary" style={styles.section}>
         Dane osobowe
@@ -158,6 +208,78 @@ export default function RegisterScreen() {
         textContentType="emailAddress"
         error={errors.email}
       />
+
+      {asDriver ? (
+        <>
+          <ThemedText type="label" color="tertiary" style={styles.section}>
+            Twój samochód
+          </ThemedText>
+          <View style={styles.models}>
+            {FLEET.map((v) => (
+              <Pressable
+                key={v.id}
+                onPress={() => setVehicleModel(v.id)}
+                style={[
+                  styles.model,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                  vehicleModel === v.id && {
+                    backgroundColor: theme.primary,
+                    borderColor: theme.primary,
+                  },
+                ]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: vehicleModel === v.id }}
+              >
+                <ThemedText
+                  type="small"
+                  style={[
+                    styles.bold,
+                    vehicleModel === v.id && { color: theme.buttonText },
+                  ]}
+                >
+                  {v.name}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.row}>
+            <View style={styles.half}>
+              <TextField
+                label="Nr rejestracyjny"
+                placeholder="PO 12345"
+                value={plate}
+                onChangeText={(t) => {
+                  setPlate(t.toUpperCase());
+                  setErrors((e) => ({ ...e, plate: undefined }));
+                }}
+                autoCapitalize="characters"
+                error={errors.plate}
+                testID="register-plate"
+              />
+            </View>
+            <View style={styles.half}>
+              <TextField
+                label="Kolor"
+                placeholder="Biała"
+                value={carColor}
+                onChangeText={(t) => {
+                  setCarColor(t);
+                  setErrors((e) => ({ ...e, carColor: undefined }));
+                }}
+                error={errors.carColor}
+                testID="register-color"
+              />
+            </View>
+          </View>
+          <ThemedText type="caption" color="tertiary">
+            Pasażer zobaczy model, kolor i numer rejestracyjny, aby łatwo Cię
+            rozpoznać. Konto kierowcy zatwierdza dyspozytor.
+          </ThemedText>
+        </>
+      ) : null}
 
       <ThemedText type="label" color="tertiary" style={styles.section}>
         Hasło
@@ -244,7 +366,7 @@ export default function RegisterScreen() {
       ) : null}
 
       <Button
-        title="Załóż konto"
+        title={asDriver ? "Załóż konto kierowcy" : "Załóż konto"}
         onPress={handleRegister}
         loading={loading}
         style={styles.button}
@@ -262,6 +384,29 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   subtitle: { marginTop: Spacing.sm },
+  bold: { fontWeight: "600" },
+  segment: { flexDirection: "row", borderRadius: BorderRadius.md, padding: 4 },
+  segmentItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  models: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  model: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
   section: { marginTop: Spacing.xl, marginBottom: Spacing.md },
   row: { flexDirection: "row", gap: Spacing.md },
   half: { flex: 1 },

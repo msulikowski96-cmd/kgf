@@ -1,6 +1,9 @@
 import React from "react";
 import { Platform, StyleSheet } from "react-native";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import {
+  createBottomTabNavigator,
+  type BottomTabNavigationOptions,
+} from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -9,15 +12,21 @@ import HomeScreen from "@/screens/HomeScreen";
 import BookingScreen from "@/screens/BookingScreen";
 import RidesScreen from "@/screens/RidesScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
-import { Logo } from "@/components/Logo";
+import DriverHomeScreen from "@/screens/driver/DriverHomeScreen";
+import DriverRidesScreen from "@/screens/driver/DriverRidesScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import type {
   BookingStackParamList,
+  DriverTabParamList,
   MainTabParamList,
 } from "@/navigation/types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const DriverTab = createBottomTabNavigator<DriverTabParamList>();
+const DriverRidesStack = createNativeStackNavigator<{
+  DriverRides: undefined;
+}>();
 const HomeStack = createNativeStackNavigator<{ Home: undefined }>();
 const BookingStack = createNativeStackNavigator<BookingStackParamList>();
 const RidesStack = createNativeStackNavigator<{ Rides: undefined }>();
@@ -30,7 +39,7 @@ function HomeStackNavigator() {
       <HomeStack.Screen
         name="Home"
         component={HomeScreen}
-        options={{ headerTitle: () => <Logo />, headerTitleAlign: "left" }}
+        options={{ headerShown: false }}
       />
     </HomeStack.Navigator>
   );
@@ -75,37 +84,47 @@ function ProfileStackNavigator() {
   );
 }
 
-export default function MainTabNavigator() {
-  const { theme } = useTheme();
-
+function DriverRidesStackNavigator() {
+  const options = useScreenOptions();
   return (
-    <Tab.Navigator
-      initialRouteName="HomeTab"
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.tabIconSelected,
-        tabBarInactiveTintColor: theme.tabIconDefault,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor: Platform.select({
-            ios: "transparent",
-            default: theme.backgroundRoot,
-          }),
-          borderTopColor: theme.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          elevation: 0,
-        },
-        tabBarBackground: () =>
-          Platform.OS === "ios" ? (
-            <BlurView
-              intensity={80}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null,
-      }}
-    >
+    <DriverRidesStack.Navigator screenOptions={options}>
+      <DriverRidesStack.Screen
+        name="DriverRides"
+        component={DriverRidesScreen}
+        options={{ title: "Moje kursy" }}
+      />
+    </DriverRidesStack.Navigator>
+  );
+}
+
+function useTabOptions(): BottomTabNavigationOptions {
+  const { theme } = useTheme();
+  return {
+    headerShown: false,
+    tabBarActiveTintColor: theme.tabIconSelected,
+    tabBarInactiveTintColor: theme.tabIconDefault,
+    tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+    tabBarStyle: {
+      position: "absolute",
+      backgroundColor: Platform.select({
+        ios: "transparent",
+        default: theme.backgroundRoot,
+      }),
+      borderTopColor: theme.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      elevation: 0,
+    },
+    tabBarBackground: () =>
+      Platform.OS === "ios" ? (
+        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+      ) : null,
+  };
+}
+
+export default function MainTabNavigator() {
+  const screenOptions = useTabOptions();
+  return (
+    <Tab.Navigator initialRouteName="HomeTab" screenOptions={screenOptions}>
       <Tab.Screen
         name="HomeTab"
         component={HomeStackNavigator}
@@ -147,5 +166,47 @@ export default function MainTabNavigator() {
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+// Tabs for drivers: work screen with the map, booked rides and the profile
+export function DriverTabNavigator() {
+  const screenOptions = useTabOptions();
+  return (
+    <DriverTab.Navigator
+      initialRouteName="DriverHomeTab"
+      screenOptions={screenOptions}
+    >
+      <DriverTab.Screen
+        name="DriverHomeTab"
+        component={DriverHomeScreen}
+        options={{
+          title: "Jazda",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="navigation" size={size} color={color} />
+          ),
+        }}
+      />
+      <DriverTab.Screen
+        name="DriverRidesTab"
+        component={DriverRidesStackNavigator}
+        options={{
+          title: "Kursy",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="calendar" size={size} color={color} />
+          ),
+        }}
+      />
+      <DriverTab.Screen
+        name="DriverProfileTab"
+        component={ProfileStackNavigator}
+        options={{
+          title: "Profil",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user" size={size} color={color} />
+          ),
+        }}
+      />
+    </DriverTab.Navigator>
   );
 }

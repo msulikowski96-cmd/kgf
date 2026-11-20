@@ -3,12 +3,17 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type {
   CreateRideInput,
+  Driver,
+  DriverLocation,
+  EstimateInput,
   LoginInput,
+  RateRideInput,
   RegisterInput,
-  Ride,
+  RideView,
   UpdateProfileInput,
   UserResponse,
 } from "@shared/schema";
+import type { LatLng, Place, RideStatus, VehicleId } from "@shared/fleet";
 
 const TOKEN_KEY = "auth_token";
 
@@ -132,11 +137,60 @@ export function updateProfile(data: UpdateProfileInput) {
   });
 }
 
+// ---------- Map ----------
+
+export function searchPlaces(query: string, near?: LatLng | null) {
+  const params = new URLSearchParams({ q: query });
+  if (near) {
+    params.set("lat", String(near.lat));
+    params.set("lng", String(near.lng));
+  }
+  return request<{ places: Place[]; online: boolean }>(
+    `/api/geo/search?${params}`,
+  );
+}
+
+export function reverseGeocode(point: LatLng) {
+  return request<Place>(`/api/geo/reverse?lat=${point.lat}&lng=${point.lng}`);
+}
+
+export interface NearbyCar extends LatLng {
+  id: string;
+  heading: number;
+  vehicleModel: VehicleId;
+}
+
+export function getNearbyCars(point: LatLng) {
+  return request<NearbyCar[]>(
+    `/api/drivers/nearby?lat=${point.lat}&lng=${point.lng}`,
+  );
+}
+
+export interface Estimate {
+  distanceKm: number;
+  durationMin: number;
+  route: [number, number][];
+  exact: boolean;
+  prices: Record<VehicleId, number>;
+  pickupEtaMin: Record<VehicleId, number | null>;
+}
+
+export function getEstimate(data: EstimateInput) {
+  return request<Estimate>("/api/rides/estimate", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ---------- Rides ----------
 
+type Dated<T, K extends keyof T> = Omit<T, K> & { [P in K]: string | null };
+
 // Dates arrive as ISO strings over JSON
-export type RideDto = Omit<Ride, "scheduledAt" | "createdAt" | "updatedAt"> & {
-  scheduledAt: string | null;
+export type RideDto = Dated<
+  RideView,
+  "scheduledAt" | "acceptedAt" | "startedAt" | "completedAt"
+> & {
   createdAt: string;
   updatedAt: string;
 };
@@ -160,4 +214,73 @@ export function cancelRide(id: string) {
   return request<RideDto>(`/api/rides/${encodeURIComponent(id)}/cancel`, {
     method: "POST",
   });
+}
+
+export function rateRide(id: string, data: RateRideInput) {
+  return request<RideDto>(`/api/rides/${encodeURIComponent(id)}/rate`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// ---------- Driver ----------
+
+export type DriverProfileDto = Omit<Driver, "createdAt" | "updatedAt"> & {
+  rating: number | null;
+  location: DriverLocation | null;
+  today: { rides: number; earnings: number };
+};
+
+// A ride as the driver sees it; the phone appears once the ride is accepted
+export type DriverRideDto = Omit<RideDto, "driver" | "contactPhone"> & {
+  contactPhone: string | null;
+  distanceToPickupKm?: number | null;
+  pickupEtaMin?: number | null;
+};
+
+export function getDriverProfile() {
+  return request<DriverProfileDto>("/api/driver/me");
+}
+
+export function setDriverOnline(online: boolean) {
+  return request<DriverProfileDto>("/api/driver/online", {
+    method: "POST",
+    body: JSON.stringify({ online }),
+  });
+}
+
+export function sendDriverLocation(point: LatLng & { heading?: number }) {
+  return request<{ ok: true }>("/api/driver/location", {
+    method: "POST",
+    body: JSON.stringify(point),
+  });
+}
+
+export function getDriverOffers() {
+  return request<DriverRideDto[]>("/api/driver/offers");
+}
+
+export function getDriverRides() {
+  return request<DriverRideDto[]>("/api/driver/rides");
+}
+
+export function acceptRide(id: string) {
+  return request<DriverRideDto>(
+    `/api/driver/rides/${encodeURIComponent(id)}/accept`,
+    { method: "POST" },
+  );
+}
+
+export function updateDriverRideStatus(id: string, status: RideStatus) {
+  return request<DriverRideDto>(
+    `/api/driver/rides/${encodeURIComponent(id)}/status`,
+    { method: "POST", body: JSON.stringify({ status }) },
+  );
+}
+
+export function releaseRide(id: string) {
+  return request<DriverRideDto>(
+    `/api/driver/rides/${encodeURIComponent(id)}/release`,
+    { method: "POST" },
+  );
 }
