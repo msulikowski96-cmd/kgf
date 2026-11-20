@@ -4,7 +4,7 @@
 // Real drivers get a head start: a demo driver takes a ride only after
 // DEMO_ACCEPT_DELAY_S seconds.
 
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 import {
   DEFAULT_CENTER,
   FLEET,
@@ -60,9 +60,14 @@ const NAMES: [string, string][] = [
 ];
 const COLORS = ["Biała", "Czarna", "Szara", "Granatowa", "Czerwona"];
 
+// Uniform number in [0, 1) from the crypto generator
+function random(): number {
+  return randomInt(0, 2 ** 32) / 2 ** 32;
+}
+
 function randomPointNear(center: LatLng, radiusKm: number): LatLng {
-  const r = radiusKm * Math.sqrt(Math.random());
-  const angle = Math.random() * 2 * Math.PI;
+  const r = radiusKm * Math.sqrt(random());
+  const angle = random() * 2 * Math.PI;
   return {
     lat: center.lat + (r / 111) * Math.cos(angle),
     lng:
@@ -109,12 +114,12 @@ export class DriverSimulator {
         userId: user.id,
         vehicleModel: vehicle.id,
         pos,
-        heading: Math.random() * 360,
+        heading: random() * 360,
         path: [],
         pathIndex: 0,
         phase: "pause",
         rideId: null,
-        until: Date.now() + Math.random() * 10_000,
+        until: Date.now() + random() * 10_000,
         scheduled: new Set(),
         routing: false,
       });
@@ -327,7 +332,7 @@ export class DriverSimulator {
         if (this.move(driver, CITY_SPEED_MS * 0.6)) {
           driver.path = [];
           driver.phase = "pause";
-          driver.until = now + 15_000 + Math.random() * 30_000;
+          driver.until = now + 15_000 + random() * 30_000;
         }
         return;
       }

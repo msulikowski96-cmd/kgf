@@ -76,11 +76,22 @@ function warnUnavailable(service: string, err: unknown) {
   );
 }
 
+// Requests go only to the two configured services (set by the operator in the
+// environment, never by users). User input only reaches the query string.
+const ALLOWED_ORIGINS = new Set([
+  new URL(GEOCODER_URL).origin,
+  new URL(ROUTER_URL).origin,
+]);
+
 async function fetchJson(url: string): Promise<unknown> {
+  const target = new URL(url);
+  if (!ALLOWED_ORIGINS.has(target.origin)) {
+    throw new Error(`Blocked request to ${target.origin}`);
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(target, {
       headers: { "User-Agent": USER_AGENT, "Accept-Language": "pl" },
       signal: controller.signal,
     });
@@ -251,7 +262,8 @@ export async function getRoute(from: LatLng, to: LatLng): Promise<RouteInfo> {
   }
 
   try {
-    const coords = `${from.lng},${from.lat};${to.lng},${to.lat}`;
+    const fmt = (n: number) => Number(n).toFixed(6);
+    const coords = `${fmt(from.lng)},${fmt(from.lat)};${fmt(to.lng)},${fmt(to.lat)}`;
     const data = (await fetchJson(
       `${ROUTER_URL}/route/v1/driving/${coords}?overview=full&geometries=geojson`,
     )) as {

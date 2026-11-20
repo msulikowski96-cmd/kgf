@@ -21,15 +21,19 @@ export function RideMap(props: RideMapProps) {
   const onCenter = useRef(onCenterChange);
   onCenter.current = onCenterChange;
 
+  // The iframe uses srcDoc, so it shares this page's origin; messages are
+  // addressed to that origin only, never to "*".
+  const origin = window.location.origin;
   const html = useMemo(
-    () => buildMapHtml(initialCenter ?? DEFAULT_CENTER, initialZoom),
+    () => buildMapHtml(initialCenter ?? DEFAULT_CENTER, initialZoom, origin),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   useEffect(() => {
     const listener = (e: MessageEvent) => {
-      if (e.source !== frame.current?.contentWindow) return;
+      if (e.source !== frame.current?.contentWindow || e.origin !== origin)
+        return;
       let data: { __rideMap?: boolean; msg?: MapEvent };
       try {
         data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
@@ -43,15 +47,15 @@ export function RideMap(props: RideMapProps) {
     };
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
-  }, []);
+  }, [origin]);
 
   useEffect(() => {
     if (!ready) return;
     frame.current?.contentWindow?.postMessage(
       JSON.stringify({ __rideMapState: true, state }),
-      "*",
+      origin,
     );
-  }, [ready, state]);
+  }, [ready, state, origin]);
 
   return (
     <View style={[styles.container, style]} testID={testID}>

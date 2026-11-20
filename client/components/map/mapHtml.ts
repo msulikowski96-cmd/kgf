@@ -18,10 +18,16 @@ export const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
  * it sends the whole map state (markers, route, camera) and gets back
  * "ready" and the map centre in pick mode.
  */
-export function buildMapHtml(center: LatLng, zoom: number): string {
+export function buildMapHtml(
+  center: LatLng,
+  zoom: number,
+  // Web only: origin of the app page that hosts the map iframe
+  parentOrigin?: string,
+): string {
   const config = JSON.stringify({
     center: [center.lat, center.lng],
     zoom,
+    parentOrigin: parentOrigin ?? null,
     tileUrl: TILE_URL,
     attribution: TILE_ATTRIBUTION,
   });
@@ -63,7 +69,7 @@ export function buildMapHtml(center: LatLng, zoom: number): string {
   function send(msg) {
     var data = JSON.stringify(msg);
     if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(data);
-    else if (window.parent !== window) window.parent.postMessage(JSON.stringify({ __rideMap: true, msg: msg }), "*");
+    else if (window.parent !== window && CONFIG.parentOrigin) window.parent.postMessage(JSON.stringify({ __rideMap: true, msg: msg }), CONFIG.parentOrigin);
   }
   window.onerror = function (m) { send({ type: "error", message: String(m) }); };
 </script>
@@ -227,6 +233,8 @@ export function buildMapHtml(center: LatLng, zoom: number): string {
   map.on("resize", placePin);
 
   window.addEventListener("message", function (e) {
+    // Accept state only from the app page that embeds this map
+    if (e.source !== window.parent || !CONFIG.parentOrigin || e.origin !== CONFIG.parentOrigin) return;
     var data = e.data;
     if (typeof data === "string") { try { data = JSON.parse(data); } catch (err) { return; } }
     if (data && data.__rideMapState) window.__setMapState(data.state);
