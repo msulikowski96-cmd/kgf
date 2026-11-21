@@ -1,6 +1,6 @@
 // Company contact details shown in the app
 export const COMPANY = {
-  name: "KGF Premium",
+  name: "Twój Prywatny Szofer",
   phone: "+48537353052",
   phoneDisplay: "+48 537 353 052",
   instagramUrl: "https://www.instagram.com/kgf_taxi/",

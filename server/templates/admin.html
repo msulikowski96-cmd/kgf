@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>KGF Premium – Dyspozytor</title>
+    <title>Szofer – Dyspozytor</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <style>
       :root {
         --bg: #0a0a0b;
@@ -69,20 +70,33 @@
       a { color: var(--info); }
       #message { margin: 12px 0; color: var(--muted); }
       .notes { background: var(--surface-2); border-radius: 8px; padding: 8px; margin-top: 8px; font-size: 13px; white-space: pre-wrap; }
+      .s-en_route { color: var(--info); }
+      .s-arrived { color: var(--ok); }
+      .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+      .tabs button.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+      #map { height: 360px; border-radius: 14px; border: 1px solid var(--border); margin-bottom: 12px; background: #0e0e10; }
+      .d-pending { color: var(--warn); }
+      .d-approved { color: var(--ok); }
+      .d-blocked { color: var(--accent); }
+      .online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+      .online.on { background: var(--ok); }
+      .price { font-weight: 600; }
+      .hidden { display: none; }
     </style>
   </head>
   <body>
     <header>
-      <h1>KGF <span>PREMIUM</span> · Dyspozytor</h1>
+      <h1>TWÓJ PRYWATNY <span>SZOFER</span> · Dyspozytor</h1>
       <div class="controls">
         <input id="key" type="password" placeholder="Klucz dyspozytora" autocomplete="current-password" />
         <button class="primary" id="save">Zaloguj</button>
         <select id="filter">
           <option value="active">Aktywne</option>
           <option value="all">Wszystkie</option>
-          <option value="pending">Oczekujące</option>
-          <option value="confirmed">Potwierdzone</option>
-          <option value="in_progress">W trakcie</option>
+          <option value="pending">Szukamy kierowcy</option>
+          <option value="confirmed">Rezerwacje z kierowcą</option>
+          <option value="en_route">Kierowca w drodze</option>
+          <option value="in_progress">W trasie</option>
           <option value="completed">Zakończone</option>
           <option value="cancelled">Anulowane</option>
         </select>
@@ -90,36 +104,55 @@
       </div>
     </header>
     <main>
+      <div class="tabs">
+        <button id="tab-rides" class="active">Zamówienia</button>
+        <button id="tab-drivers">Kierowcy i mapa</button>
+      </div>
       <div id="message"></div>
-      <div class="grid" id="list"></div>
+      <div id="rides-view"><div class="grid" id="list"></div></div>
+      <div id="drivers-view" class="hidden">
+        <div id="map"></div>
+        <div class="grid" id="drivers"></div>
+      </div>
     </main>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
       const STATUS = {
-        pending: "Oczekuje",
-        confirmed: "Potwierdzony",
-        in_progress: "W trakcie",
+        pending: "Szukamy kierowcy",
+        confirmed: "Kierowca przypisany",
+        en_route: "Kierowca w drodze",
+        arrived: "Kierowca na miejscu",
+        in_progress: "W trasie",
         completed: "Zakończony",
         cancelled: "Anulowany",
       };
+      const ACTIVE = ["pending", "confirmed", "en_route", "arrived", "in_progress"];
       const VEHICLES = { model3: "Model 3", modelY: "Model Y", modelS: "Model S", modelX: "Model X" };
       const PAYMENT = { card: "Karta", cash: "Gotówka" };
+      const DRIVER_STATUS = { pending: "Do weryfikacji", approved: "Zatwierdzony", blocked: "Zablokowany" };
+      // Dispatcher overrides; normally drivers move rides forward in their app
       const NEXT = {
-        pending: ["confirmed", "cancelled"],
-        confirmed: ["in_progress", "cancelled"],
+        pending: ["cancelled"],
+        confirmed: ["pending", "cancelled"],
+        en_route: ["pending", "cancelled"],
+        arrived: ["in_progress", "cancelled"],
         in_progress: ["completed"],
         completed: [],
         cancelled: [],
       };
       const ACTION_LABEL = {
-        confirmed: "Potwierdź",
+        pending: "Odbierz kierowcy",
         in_progress: "Rozpocznij",
         completed: "Zakończ",
         cancelled: "Anuluj",
       };
+      let view = "rides";
+      let map = null;
+      const carMarkers = {};
 
       const $ = (id) => document.getElementById(id);
       let key = "";
-      try { key = localStorage.getItem("kgf-admin-key") || ""; } catch {}
+      try { key = localStorage.getItem("szofer-admin-key") || ""; } catch {}
       $("key").value = key;
 
       function el(tag, props = {}, children = []) {
@@ -151,11 +184,12 @@
           return;
         }
         try {
-          const rides = await api("/api/admin/rides");
-          render(rides);
+          if (view === "rides") render(await api("/api/admin/rides"));
+          else renderDrivers(await api("/api/admin/drivers"));
         } catch (e) {
           $("message").textContent = e.message;
           $("list").replaceChildren();
+          $("drivers").replaceChildren();
         }
       }
 
@@ -163,7 +197,7 @@
         const filter = $("filter").value;
         const shown = rides.filter((r) =>
           filter === "all" ? true
-          : filter === "active" ? ["pending", "confirmed", "in_progress"].includes(r.status)
+          : filter === "active" ? ACTIVE.includes(r.status)
           : r.status === filter,
         );
         $("message").textContent = shown.length
@@ -184,12 +218,18 @@
               el("div", { textContent: "● " + r.pickupAddress }),
               el("div", { textContent: "■ " + r.destinationAddress }),
             ]),
-            el("div", { className: "muted", textContent:
-              `Tesla ${VEHICLES[r.vehicleModel] || r.vehicleModel} · ${r.passengers} os. · ${PAYMENT[r.paymentMethod] || r.paymentMethod}` }),
+            el("div", { className: "row" }, [
+              el("span", { className: "muted", textContent:
+                `Tesla ${VEHICLES[r.vehicleModel] || r.vehicleModel} · ${r.passengers} os. · ${PAYMENT[r.paymentMethod] || r.paymentMethod}` +
+                (r.distanceKm != null ? ` · ${String(r.distanceKm).replace(".", ",")} km` : "") }),
+              el("span", { className: "price", textContent: r.estimatedPrice != null ? r.estimatedPrice + " zł" : "" }),
+            ]),
             el("div", { className: "row", style: "margin-top:8px" }, [
               el("span", { textContent: r.contactName }),
               el("a", { href: "tel:" + r.contactPhone, textContent: r.contactPhone }),
             ]),
+            el("div", { className: "muted", textContent:
+              "Kierowca: " + (r.driverName || "—") + (r.rating ? ` · ocena ${r.rating}/5` : "") }),
             el("div", { className: "muted", textContent: "Złożono: " + fmtDate(r.createdAt) }),
           ]);
           if (r.notes) card.append(el("div", { className: "notes", textContent: r.notes }));
@@ -197,6 +237,81 @@
           return card;
         }));
       }
+
+      function initMap() {
+        if (map || !window.L) return;
+        map = L.map("map").setView([52.4083, 16.9335], 12);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+          subdomains: "abcd", maxZoom: 19,
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
+        }).addTo(map);
+      }
+
+      function renderDrivers(drivers) {
+        initMap();
+        const online = drivers.filter((d) => d.online && d.location).length;
+        $("message").textContent =
+          `Kierowców: ${drivers.length} · online: ${online} · odświeżono ${new Date().toLocaleTimeString("pl-PL")}`;
+        if (map) {
+          const seen = {};
+          for (const d of drivers) {
+            if (!d.location || !d.online) continue;
+            seen[d.userId] = true;
+            const label = `${d.name} · Tesla ${VEHICLES[d.vehicleModel]} · ${d.plate}`;
+            if (carMarkers[d.userId]) carMarkers[d.userId].setLatLng([d.location.lat, d.location.lng]).setTooltipContent(label);
+            else carMarkers[d.userId] = L.circleMarker([d.location.lat, d.location.lng], {
+              radius: 7, color: "#0a0a0b", weight: 2, fillColor: "#f5f5f7", fillOpacity: 1,
+            }).bindTooltip(label).addTo(map);
+          }
+          for (const id of Object.keys(carMarkers)) {
+            if (!seen[id]) { map.removeLayer(carMarkers[id]); delete carMarkers[id]; }
+          }
+          setTimeout(() => map.invalidateSize(), 0);
+        }
+        $("drivers").replaceChildren(...drivers.map((d) => {
+          const actions = [];
+          if (d.status !== "approved") actions.push(el("button", { textContent: "Zatwierdź", onclick: () => setDriver(d.userId, "approved") }));
+          if (d.status !== "blocked") actions.push(el("button", { textContent: "Zablokuj", onclick: () => setDriver(d.userId, "blocked") }));
+          return el("div", { className: "card" }, [
+            el("div", { className: "row" }, [
+              el("strong", {}, [el("span", { className: "online" + (d.online && d.location ? " on" : "") }), d.name]),
+              el("span", { className: "badge d-" + d.status, textContent: DRIVER_STATUS[d.status] }),
+            ]),
+            el("div", { className: "muted", textContent:
+              `Tesla ${VEHICLES[d.vehicleModel] || d.vehicleModel} · ${d.carColor} · ${d.plate}` }),
+            el("div", { className: "row", style: "margin-top:8px" }, [
+              el("a", { href: "tel:" + d.phone, textContent: d.phone || "" }),
+              el("span", { className: "muted", textContent: d.rating ? `★ ${d.rating} (${d.ratingCount})` : "brak ocen" }),
+            ]),
+            el("div", { className: "muted", textContent: d.email || "" }),
+            el("div", { className: "actions" }, actions),
+          ]);
+        }));
+      }
+
+      async function setDriver(id, status) {
+        try {
+          await api("/api/admin/drivers/" + encodeURIComponent(id), {
+            method: "PATCH",
+            body: JSON.stringify({ status }),
+          });
+          await load();
+        } catch (e) {
+          alert(e.message);
+        }
+      }
+
+      function setView(next) {
+        view = next;
+        $("tab-rides").classList.toggle("active", view === "rides");
+        $("tab-drivers").classList.toggle("active", view === "drivers");
+        $("rides-view").classList.toggle("hidden", view !== "rides");
+        $("drivers-view").classList.toggle("hidden", view !== "drivers");
+        $("filter").classList.toggle("hidden", view !== "rides");
+        load();
+      }
+      $("tab-rides").onclick = () => setView("rides");
+      $("tab-drivers").onclick = () => setView("drivers");
 
       async function setStatus(id, status) {
         try {
@@ -212,13 +327,13 @@
 
       $("save").onclick = () => {
         key = $("key").value.trim();
-        try { localStorage.setItem("kgf-admin-key", key); } catch {}
+        try { localStorage.setItem("szofer-admin-key", key); } catch {}
         load();
       };
       $("refresh").onclick = load;
       $("filter").onchange = load;
       load();
-      setInterval(load, 20000);
+      setInterval(() => load(), 5000);
     </script>
   </body>
 </html>

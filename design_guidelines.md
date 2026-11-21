@@ -1,11 +1,14 @@
-# KGF Premium – design guidelines
+# Twój Prywatny Szofer – design guidelines
 
-**Purpose**: customers book premium rides in a Tesla (Model 3 / Y / S / X) in Poznań and the surrounding area.
+**Purpose**: an Uber-style app – customers book rides in a Tesla (Model 3 / Y / S / X) in Poznań and the surrounding area, track the driver live on the map; drivers take and run rides in the same app.
 
 **Aesthetic**: quiet luxury. Deep black surfaces, white primary actions, a single red accent used sparingly (labels, tail light, logo bar). No yellow "taxi" cues.
 
 ## Navigation
-Bottom tabs: **Start** (home), **Zamów** (booking), **Przejazdy** (my rides), **Profil**. Ride details open as a full screen above the tabs. Login and registration come before the tabs.
+Customer tabs: **Start** (full-screen map with nearby cars and "Dokąd jedziemy?"), **Zamów** (booking), **Przejazdy** (my rides), **Profil**. Ride tracking (map + bottom sheet) opens above the tabs; place search opens as a modal. Driver tabs: **Jazda** (map, online switch, offers, current ride), **Kursy** (bookings and history), **Profil**. Login and registration come before the tabs.
+
+## Map
+Leaflet in a WebView (iframe on web) with the CARTO dark basemap. Pickup = white circle with a black dot, destination = white square, cars = top-down car icons rotated by heading (the assigned car larger and white), route = white line with a dark casing. Map screens use a bottom sheet (24 radius top corners) over the map.
 
 ## Colours (`client/constants/theme.ts`)
 - Background `#0A0A0B`, surfaces `#141416` / `#1C1C1F` / `#26262A`

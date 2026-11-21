@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "KGF Premium",
+    "name": "Twój Prywatny Szofer",
     "slug": "kgf",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -36,7 +36,13 @@
           "backgroundColor": "#0A0A0B"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Twoja lokalizacja pozwala ustawić miejsce odbioru i pokazać kierowcy, gdzie jesteś."
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true

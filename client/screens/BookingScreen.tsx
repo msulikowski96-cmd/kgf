@@ -1,20 +1,24 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View, Pressable, ScrollView } from "react-native";
 import {
   useNavigation,
   useRoute,
   type RouteProp,
 } from "@react-navigation/native";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Feather } from "@expo/vector-icons";
-import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { TabScreenScrollView } from "@/components/ScreenScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import { TextField } from "@/components/TextField";
 import { Button } from "@/components/Button";
 import { TeslaCar } from "@/components/TeslaCar";
+import { RideMap } from "@/components/map/RideMap";
+import type { MapMarker } from "@/components/map/mapTypes";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBookingDraft } from "@/contexts/BookingDraftContext";
+import { useUserLocation } from "@/hooks/useUserLocation";
 import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing } from "@/constants/theme";
 import {
@@ -22,12 +26,18 @@ import {
   PAYMENT_METHODS,
   getVehicle,
   type PaymentMethod,
+  type Place,
   type VehicleId,
 } from "@shared/fleet";
 import { isValidPhone, formatPhone } from "@shared/phone";
 import * as api from "@/lib/api";
 import { queryKeys } from "@/lib/queryClient";
-import { formatPrice, formatRideTime, priceSummary } from "@/lib/format";
+import {
+  formatDistance,
+  formatDuration,
+  formatPrice,
+  priceSummary,
+} from "@/lib/format";
 import { carColor, carVariant } from "@/lib/vehicleStyle";
 import { errorFeedback, successFeedback, tapFeedback } from "@/lib/feedback";
 import type { BookingStackParamList } from "@/navigation/types";
@@ -152,9 +162,10 @@ export default function BookingScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<BookingStackParamList, "Booking">>();
   const queryClient = useQueryClient();
+  const draft = useBookingDraft();
+  const { pickup, destination } = draft;
+  const { location } = useUserLocation();
 
-  const [pickup, setPickup] = useState("");
-  const [destination, setDestination] = useState("");
   const [when, setWhen] = useState<"now" | "later">("now");
   const [days, setDays] = useState(buildDays);
   const [dayIndex, setDayIndex] = useState(0);
@@ -168,13 +179,39 @@ export default function BookingScreen() {
   const [contactPhone, setContactPhone] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("card");
   const [errors, setErrors] = useState<Errors>({});
-  const [createdRide, setCreatedRide] = useState<api.RideDto | null>(null);
 
   const vehicle = getVehicle(vehicleId)!;
   const slots = useMemo(
     () => (days[dayIndex] ? slotsForDay(days[dayIndex]) : []),
     [days, dayIndex],
   );
+
+  // Start from where the user is, like any ride app
+  const autoPickupDone = useRef(false);
+  useEffect(() => {
+    if (!location || pickup || autoPickupDone.current) return;
+    autoPickupDone.current = true;
+    api
+      .reverseGeocode(location)
+      .then((place) => draft.setPickup({ ...place, name: place.name }))
+      .catch(() => {});
+  }, [location, pickup, draft]);
+
+  const estimate = useQuery({
+    queryKey: [
+      "estimate",
+      pickup?.lat,
+      pickup?.lng,
+      destination?.lat,
+      destination?.lng,
+    ],
+    queryFn: () =>
+      api.getEstimate({ pickup: pickup!, destination: destination! }),
+    enabled: !!pickup && !!destination,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+  const price = estimate.data?.prices[vehicleId];
 
   // Preselect the model chosen on the home screen
   useEffect(() => {
@@ -206,15 +243,25 @@ export default function BookingScreen() {
     onSuccess: (ride) => {
       successFeedback();
       queryClient.invalidateQueries({ queryKey: queryKeys.rides });
-      setCreatedRide(ride);
+      queryClient.setQueryData(queryKeys.ride(ride.id), ride);
+      draft.setDestination(null);
+      setNotes("");
+      setWhen("now");
+      mutation.reset();
+      navigation.navigate("RideDetails", { id: ride.id });
     },
     onError: () => errorFeedback(),
   });
 
+  const openSearch = (field: "pickup" | "destination") => {
+    setErrors((e) => ({ ...e, [field]: undefined }));
+    navigation.navigate("PlaceSearch", { field });
+  };
+
   const submit = () => {
     const e: Errors = {};
-    if (pickup.trim().length < 3) e.pickup = "Podaj miejsce odbioru";
-    if (destination.trim().length < 3) e.destination = "Podaj cel podróży";
+    if (!pickup) e.pickup = "Wybierz miejsce odbioru";
+    if (!destination) e.destination = "Wybierz cel podróży";
     if (contactName.trim().length < 2)
       e.contactName = "Podaj imię osoby kontaktowej";
     if (!isValidPhone(contactPhone))
@@ -225,14 +272,16 @@ export default function BookingScreen() {
       setDayIndex(0);
     }
     setErrors(e);
-    if (Object.keys(e).length > 0) {
+    if (Object.keys(e).length > 0 || !pickup || !destination) {
       errorFeedback();
       return;
     }
 
     mutation.mutate({
-      pickupAddress: pickup.trim(),
-      destinationAddress: destination.trim(),
+      pickupAddress: placeLabel(pickup),
+      destinationAddress: placeLabel(destination),
+      pickup: { lat: pickup.lat, lng: pickup.lng },
+      destination: { lat: destination.lat, lng: destination.lng },
       scheduledAt: when === "later" ? slot : null,
       vehicleModel: vehicleId,
       passengers,
@@ -243,110 +292,117 @@ export default function BookingScreen() {
     });
   };
 
-  const reset = () => {
-    setCreatedRide(null);
-    setPickup("");
-    setDestination("");
-    setNotes("");
-    setWhen("now");
-    setDays(buildDays());
-    setDayIndex(0);
-    mutation.reset();
-  };
-
-  if (createdRide) {
-    const v = getVehicle(createdRide.vehicleModel)!;
-    return (
-      <TabScreenScrollView contentContainerStyle={styles.success}>
-        <Animated.View
-          entering={ZoomIn.duration(400)}
-          style={[styles.successIcon, { backgroundColor: theme.success }]}
-        >
-          <Feather name="check" size={40} color={theme.buttonText} />
-        </Animated.View>
-        <ThemedText type="h2" style={styles.center}>
-          Zamówienie przyjęte
-        </ThemedText>
-        <ThemedText
-          color="secondary"
-          style={[styles.center, styles.successText]}
-        >
-          Dyspozytor potwierdzi przejazd w ciągu kilku minut. Kierowca zadzwoni
-          na numer {formatPhone(createdRide.contactPhone)}.
-        </ThemedText>
-
-        <View
-          style={[
-            styles.summary,
-            {
-              backgroundColor: theme.backgroundDefault,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <TeslaCar
-            width={220}
-            color={carColor(v.id)}
-            variant={carVariant(v.id)}
-          />
-          <ThemedText type="h4" style={styles.summaryTitle}>
-            {v.name}
-          </ThemedText>
-          <SummaryRow
-            icon="clock"
-            text={formatRideTime(createdRide.scheduledAt)}
-          />
-          <SummaryRow icon="circle" text={createdRide.pickupAddress} />
-          <SummaryRow icon="square" text={createdRide.destinationAddress} />
-          <SummaryRow
-            icon="credit-card"
-            text={PAYMENT_METHODS[createdRide.paymentMethod]}
-          />
-        </View>
-
-        <Button
-          title="Zobacz szczegóły"
-          onPress={() =>
-            navigation.navigate("RideDetails", { id: createdRide.id })
-          }
-          style={styles.fullWidth}
-        />
-        <Button
-          title="Nowe zamówienie"
-          variant="ghost"
-          onPress={reset}
-          style={[styles.fullWidth, styles.gapTop]}
-        />
-      </TabScreenScrollView>
-    );
-  }
+  const mapMarkers = useMemo(() => {
+    const list: MapMarker[] = [];
+    if (pickup) list.push({ id: "pickup", kind: "pickup", ...latLng(pickup) });
+    if (destination)
+      list.push({
+        id: "destination",
+        kind: "destination",
+        ...latLng(destination),
+      });
+    return list;
+  }, [pickup, destination]);
+  const fitPoints = useMemo(
+    () => [pickup, destination].filter((p): p is Place => !!p),
+    [pickup, destination],
+  );
 
   return (
     <TabScreenScrollView>
       <Animated.View entering={FadeInDown.duration(400)}>
         <Section title="Trasa">
-          <TextField
-            icon="circle"
-            placeholder="Miejsce odbioru, np. ul. Półwiejska 2, Poznań"
-            value={pickup}
-            onChangeText={(t) => {
-              setPickup(t);
-              setErrors((e) => ({ ...e, pickup: undefined }));
-            }}
-            error={errors.pickup}
-            testID="booking-pickup"
-          />
-          <TextField
-            icon="square"
-            placeholder="Dokąd jedziemy? np. Lotnisko Ławica"
-            value={destination}
-            onChangeText={(t) => {
-              setDestination(t);
-              setErrors((e) => ({ ...e, destination: undefined }));
-            }}
-            error={errors.destination}
-            testID="booking-destination"
-          />
+          <View
+            style={[
+              styles.routeCard,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                borderColor:
+                  errors.pickup || errors.destination
+                    ? theme.error
+                    : theme.border,
+              },
+            ]}
+          >
+            <View style={styles.routeDots}>
+              <View style={[styles.dotCircle, { borderColor: theme.text }]} />
+              <View
+                style={[
+                  styles.dotLine,
+                  { backgroundColor: theme.borderStrong },
+                ]}
+              />
+              <View
+                style={[styles.dotSquare, { backgroundColor: theme.text }]}
+              />
+            </View>
+            <View style={styles.flex}>
+              <PlaceButton
+                label="Odbiór"
+                place={pickup}
+                placeholder="Skąd jedziemy?"
+                onPress={() => openSearch("pickup")}
+                testID="booking-pickup"
+              />
+              <View
+                style={[styles.divider, { backgroundColor: theme.border }]}
+              />
+              <PlaceButton
+                label="Cel"
+                place={destination}
+                placeholder="Dokąd jedziemy?"
+                onPress={() => openSearch("destination")}
+                testID="booking-destination"
+              />
+            </View>
+            <Pressable
+              onPress={() => {
+                tapFeedback();
+                draft.swap();
+              }}
+              style={[
+                styles.swap,
+                { backgroundColor: theme.backgroundTertiary },
+              ]}
+              accessibilityLabel="Zamień odbiór i cel"
+              hitSlop={8}
+            >
+              <Feather name="repeat" size={16} color={theme.text} />
+            </Pressable>
+          </View>
+          {errors.pickup || errors.destination ? (
+            <ThemedText type="caption" style={{ color: theme.error }}>
+              {errors.pickup ?? errors.destination}
+            </ThemedText>
+          ) : null}
+
+          {pickup || destination ? (
+            <View style={[styles.mapBox, { borderColor: theme.border }]}>
+              <RideMap
+                style={styles.map}
+                initialCenter={pickup ?? destination ?? undefined}
+                markers={mapMarkers}
+                route={estimate.data?.route}
+                fitPoints={fitPoints}
+                fitKey={fitPoints.map((p) => `${p.lat},${p.lng}`).join("|")}
+                testID="booking-map"
+              />
+              {estimate.data ? (
+                <View
+                  style={[
+                    styles.routeInfo,
+                    { backgroundColor: theme.backgroundRoot },
+                  ]}
+                >
+                  <Feather name="navigation" size={12} color={theme.text} />
+                  <ThemedText type="caption" testID="booking-distance">
+                    {formatDistance(estimate.data.distanceKm)} · ok.{" "}
+                    {formatDuration(estimate.data.durationMin)}
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </Section>
 
         <Section title="Kiedy">
@@ -375,6 +431,7 @@ export default function BookingScreen() {
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: when === mode }}
+                testID={`booking-when-${mode}`}
               >
                 <Feather
                   name={mode === "now" ? "zap" : "calendar"}
@@ -386,7 +443,7 @@ export default function BookingScreen() {
                   color={when === mode ? "primary" : "secondary"}
                   style={styles.bold}
                 >
-                  {mode === "now" ? "Teraz" : "Zaplanuj"}
+                  {mode === "now" ? "Teraz" : "Zarezerwuj termin"}
                 </ThemedText>
               </Pressable>
             ))}
@@ -437,17 +494,23 @@ export default function BookingScreen() {
                   {errors.time}
                 </ThemedText>
               ) : null}
+              <ThemedText type="small" color="secondary">
+                Kierowca przyjmie rezerwację wcześniej i przyjedzie na wybraną
+                godzinę.
+              </ThemedText>
             </View>
           ) : (
             <ThemedText type="small" color="secondary" style={styles.hint}>
-              Najbliższa wolna Tesla przyjedzie najszybciej, jak to możliwe.
+              Najbliższy wolny kierowca przyjedzie najszybciej, jak to możliwe.
             </ThemedText>
           )}
         </Section>
 
-        <Section title="Wybierz Teslę">
+        <Section title="Wybierz auto">
           {FLEET.map((v) => {
             const selected = v.id === vehicleId;
+            const vPrice = estimate.data?.prices[v.id];
+            const eta = estimate.data?.pickupEtaMin[v.id];
             return (
               <Pressable
                 key={v.id}
@@ -489,9 +552,13 @@ export default function BookingScreen() {
                   <ThemedText
                     type="caption"
                     color="secondary"
-                    numberOfLines={2}
+                    numberOfLines={1}
                   >
-                    {v.description}
+                    {estimate.data && when === "now"
+                      ? eta != null
+                        ? `Kierowca za ${eta} min`
+                        : "Brak wolnych aut w pobliżu"
+                      : v.description}
                   </ThemedText>
                   <View style={styles.vehicleMeta}>
                     <Feather
@@ -514,12 +581,20 @@ export default function BookingScreen() {
                   </View>
                 </View>
                 <View style={styles.vehiclePrice}>
-                  <ThemedText type="small" style={styles.bold}>
-                    od {formatPrice(v.minimumFare)}
-                  </ThemedText>
-                  <ThemedText type="caption" color="tertiary">
-                    {formatPrice(v.perKm)}/km
-                  </ThemedText>
+                  {vPrice != null ? (
+                    <ThemedText style={styles.bold} testID={`price-${v.id}`}>
+                      {formatPrice(vPrice)}
+                    </ThemedText>
+                  ) : (
+                    <>
+                      <ThemedText type="small" style={styles.bold}>
+                        od {formatPrice(v.minimumFare)}
+                      </ThemedText>
+                      <ThemedText type="caption" color="tertiary">
+                        {formatPrice(v.perKm)}/km
+                      </ThemedText>
+                    </>
+                  )}
                 </View>
               </Pressable>
             );
@@ -602,7 +677,7 @@ export default function BookingScreen() {
             }}
             keyboardType="phone-pad"
             error={errors.contactPhone}
-            hint="Kierowca zadzwoni na ten numer przed przyjazdem"
+            hint="Kierowca zadzwoni na ten numer, jeśli nie będzie mógł Cię znaleźć"
           />
         </Section>
 
@@ -623,14 +698,19 @@ export default function BookingScreen() {
           <View style={styles.flex}>
             <ThemedText type="small" color="secondary">
               {vehicle.name}
+              {estimate.data
+                ? ` · ${formatDistance(estimate.data.distanceKm)}`
+                : ""}
             </ThemedText>
-            <ThemedText type="h4">{priceSummary(vehicle)}</ThemedText>
+            <ThemedText type="h3" testID="booking-total">
+              {price != null ? formatPrice(price) : priceSummary(vehicle)}
+            </ThemedText>
           </View>
         </View>
         <ThemedText type="caption" color="tertiary" style={styles.priceNote}>
-          Opłata startowa {formatPrice(vehicle.baseFare)} +{" "}
-          {formatPrice(vehicle.perKm)} za km. Dyspozytor potwierdzi dokładną
-          cenę przy potwierdzeniu przejazdu.
+          {price != null
+            ? `Cena szacunkowa: opłata startowa ${formatPrice(vehicle.baseFare)} + ${formatPrice(vehicle.perKm)} za km${estimate.data?.exact === false ? " (odległość przybliżona)" : ""}. Płacisz kierowcy po przejeździe.`
+            : "Wybierz odbiór i cel, aby zobaczyć cenę przejazdu."}
         </ThemedText>
 
         {mutation.error ? (
@@ -645,7 +725,11 @@ export default function BookingScreen() {
         ) : null}
 
         <Button
-          title={`Zamów ${vehicle.name.replace("Tesla ", "Teslę ")}`}
+          title={
+            when === "later"
+              ? `Zarezerwuj${price != null ? ` · ${formatPrice(price)}` : ""}`
+              : `Zamów teraz${price != null ? ` · ${formatPrice(price)}` : ""}`
+          }
           icon="navigation"
           onPress={submit}
           loading={mutation.isPending}
@@ -656,19 +740,56 @@ export default function BookingScreen() {
   );
 }
 
-function SummaryRow({
-  icon,
-  text,
+function latLng(p: Place) {
+  return { lat: p.lat, lng: p.lng };
+}
+
+function placeLabel(p: Place) {
+  return p.address && !p.address.startsWith(p.name)
+    ? `${p.name}, ${p.address}`
+    : p.address || p.name;
+}
+
+function PlaceButton({
+  label,
+  place,
+  placeholder,
+  onPress,
+  testID,
 }: {
-  icon: keyof typeof Feather.glyphMap;
-  text: string;
+  label: string;
+  place: Place | null;
+  placeholder: string;
+  onPress: () => void;
+  testID?: string;
 }) {
-  const { theme } = useTheme();
   return (
-    <View style={styles.summaryRow}>
-      <Feather name={icon} size={14} color={theme.textSecondary} />
-      <ThemedText style={styles.flex}>{text}</ThemedText>
-    </View>
+    <Pressable
+      onPress={() => {
+        tapFeedback();
+        onPress();
+      }}
+      style={styles.placeButton}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${place?.name ?? placeholder}`}
+      testID={testID}
+    >
+      <ThemedText type="caption" color="tertiary">
+        {label}
+      </ThemedText>
+      <ThemedText
+        numberOfLines={1}
+        color={place ? "primary" : "secondary"}
+        style={place ? styles.bold : undefined}
+      >
+        {place?.name ?? placeholder}
+      </ThemedText>
+      {place?.address && place.address !== place.name ? (
+        <ThemedText type="caption" color="secondary" numberOfLines={1}>
+          {place.address}
+        </ThemedText>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -762,33 +883,51 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.md,
   },
-  success: { alignItems: "center" },
-  successIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.xl,
-  },
-  successText: { marginTop: Spacing.sm, marginBottom: Spacing.xl },
-  summary: {
-    width: "100%",
-    alignItems: "center",
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    marginBottom: Spacing.xl,
-  },
-  summaryTitle: { marginTop: Spacing.md, marginBottom: Spacing.md },
-  summaryRow: {
+  routeCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.md,
-    alignSelf: "stretch",
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
     paddingVertical: Spacing.xs,
+    paddingLeft: Spacing.lg,
+    paddingRight: Spacing.md,
+    marginBottom: Spacing.sm,
   },
-  fullWidth: { alignSelf: "stretch" },
-  gapTop: { marginTop: Spacing.md },
+  routeDots: { alignItems: "center", marginRight: Spacing.md },
+  dotCircle: { width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
+  dotLine: { width: 2, height: 34, marginVertical: 3 },
+  dotSquare: { width: 9, height: 9 },
+  placeButton: {
+    paddingVertical: Spacing.sm,
+    minHeight: 52,
+    justifyContent: "center",
+  },
+  divider: { height: StyleSheet.hairlineWidth },
+  swap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: Spacing.sm,
+  },
+  mapBox: {
+    height: 220,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginTop: Spacing.sm,
+  },
+  map: { flex: 1 },
+  routeInfo: {
+    position: "absolute",
+    left: Spacing.sm,
+    top: Spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
 });
