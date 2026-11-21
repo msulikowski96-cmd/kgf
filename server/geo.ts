@@ -76,25 +76,28 @@ function warnUnavailable(service: string, err: unknown) {
   );
 }
 
-// Requests go only to the two configured services (set by the operator in the
-// environment, never by users). User input only reaches the query string.
-const ALLOWED_ORIGINS = new Set([
-  new URL(GEOCODER_URL).origin,
-  new URL(ROUTER_URL).origin,
-]);
+// Requests go only to the two services configured by the operator in the
+// environment. Callers pass just the path and query; user input only ever
+// ends up URL-encoded in the query string.
+type GeoService = "geocoder" | "router";
 
-async function fetchJson(url: string): Promise<unknown> {
-  const target = new URL(url);
-  if (!ALLOWED_ORIGINS.has(target.origin)) {
-    throw new Error(`Blocked request to ${target.origin}`);
-  }
+async function fetchJson(
+  service: GeoService,
+  pathAndQuery: string,
+): Promise<unknown> {
+  if (!pathAndQuery.startsWith("/")) throw new Error("Invalid path");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(target, {
-      headers: { "User-Agent": USER_AGENT, "Accept-Language": "pl" },
-      signal: controller.signal,
-    });
+    const res = await fetch(
+      service === "geocoder"
+        ? `${GEOCODER_URL}${pathAndQuery}`
+        : `${ROUTER_URL}${pathAndQuery}`,
+      {
+        headers: { "User-Agent": USER_AGENT, "Accept-Language": "pl" },
+        signal: controller.signal,
+      },
+    );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } finally {
@@ -164,7 +167,7 @@ export async function searchPlaces(
         : VIEWBOX,
     });
     const results = (await throttled(() =>
-      fetchJson(`${GEOCODER_URL}/search?${params}`),
+      fetchJson("geocoder", `/search?${params}`),
     )) as NominatimResult[];
     const places = [...popular, ...results.map(toPlace)].filter(
       (p, i, all) =>
@@ -203,7 +206,7 @@ export async function reverseGeocode(point: LatLng): Promise<Place> {
       zoom: "18",
     });
     const result = (await throttled(() =>
-      fetchJson(`${GEOCODER_URL}/reverse?${params}`),
+      fetchJson("geocoder", `/reverse?${params}`),
     )) as NominatimResult & { error?: string };
     if (result.error) return fallback;
     const place = { ...toPlace(result), lat: point.lat, lng: point.lng };
@@ -265,7 +268,8 @@ export async function getRoute(from: LatLng, to: LatLng): Promise<RouteInfo> {
     const fmt = (n: number) => Number(n).toFixed(6);
     const coords = `${fmt(from.lng)},${fmt(from.lat)};${fmt(to.lng)},${fmt(to.lat)}`;
     const data = (await fetchJson(
-      `${ROUTER_URL}/route/v1/driving/${coords}?overview=full&geometries=geojson`,
+      "router",
+      `/route/v1/driving/${coords}?overview=full&geometries=geojson`,
     )) as {
       code: string;
       routes?: {
